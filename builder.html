@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Website Builder — Infinity Engine</title>
-  <meta name="description" content="Generate complete websites from a single prompt. AI creates folders, HTML, and links gallery assets automatically.">
+  <meta name="description" content="Generate complete websites from a single prompt. The Infinity built-in AI engine writes HTML using your GPU — no API keys, no subscriptions, no cost.">
   <link rel="stylesheet" href="css/infinity.css">
   <style>
     .log-line {
@@ -106,7 +106,7 @@
 
   <div class="page-header">
     <h1>🤖 AI Website Builder</h1>
-    <p>Describe your site — the engine writes the HTML, shows you every line it generates, and commits it live.</p>
+    <p>Describe your site — the built-in AI engine writes the HTML, shows you every line it generates, and commits it live. No subscriptions. No paid APIs.</p>
   </div>
 
   <main>
@@ -134,21 +134,9 @@
         placeholder="e.g. Build an awesome Zelda fan site with dark fantasy theme"></textarea>
     </div>
 
-    <div class="token-row" style="margin-bottom:0.5rem">
-      <input type="password" id="ai-api-key" class="form-input"
-        placeholder="🤖 AI Key (sk-… OpenAI or AIza… Gemini) — powers real HTML generation"
-        autocomplete="off"
-        style="font-family:monospace;font-size:0.82rem"
-        aria-label="AI API Key (OpenAI or Gemini)">
-    </div>
-    <p style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.75rem">
-      OpenAI key (<code>sk-…</code>) uses <strong>gpt-4o-mini</strong>; Gemini key (<code>AIza…</code>) uses <strong>gemini-1.5-flash</strong>.
-      Without a key the built-in template generator is used instead.
-    </p>
-
     <div class="token-row">
       <input type="password" id="ghp-token" class="form-input"
-        placeholder="🔐 GitHub Token (ghp_…) — auto-commit live"
+        placeholder="🔐 GitHub Token (ghp_…) — enter once, saved automatically"
         autocomplete="off"
         style="font-family:monospace;font-size:0.82rem"
         aria-label="GitHub Personal Access Token">
@@ -157,10 +145,28 @@
       </button>
     </div>
     <p style="font-size:0.72rem;color:var(--text-muted);margin-top:0.4rem">
-      Token needs <code>contents: write</code> scope. Or set <code>GHP_TOKEN</code> in
-      <a href="https://github.com/www-infinity/Future-Now/settings/secrets/actions" target="_blank" rel="noopener" style="color:var(--accent-cyan)">repo Secrets</a>
-      for the Actions deploy workflow to auto-commit on push.
+      Token needs <code>contents: write</code> scope. Enter it once — the engine saves it in your browser and uses it automatically every time.
+      <span style="color:var(--accent-orange)">⚠️ Stored in plain text in browser localStorage — only use on your own device.</span>
     </p>
+
+    <details style="margin-top:0.75rem">
+      <summary style="font-size:0.78rem;color:var(--text-muted);cursor:pointer;user-select:none">
+        ⚙️ Advanced: Gemini API key (optional free-tier cloud fallback)
+      </summary>
+      <div style="margin-top:0.5rem">
+        <p style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.4rem">
+          Free tier available at <a href="https://aistudio.google.com" target="_blank" rel="noopener" style="color:var(--accent-cyan)">aistudio.google.com</a> — only used when Ollama and the built-in GPU engine are both unavailable.
+        </p>
+        <input type="password" id="gemini-api-key" class="form-input"
+          placeholder="AIza… Gemini key — optional, only needed as cloud fallback"
+          autocomplete="off"
+          style="font-family:monospace;font-size:0.82rem"
+          aria-label="Gemini API Key (optional)">
+        <p style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem">
+          The built-in GPU engine runs first (no key needed). Gemini is only used as a cloud fallback.
+        </p>
+      </div>
+    </details>
 
     <!-- Build Log -->
     <div id="ai-output" aria-live="polite" aria-label="Build log"></div>
@@ -202,12 +208,12 @@
         <h3 style="font-size:0.95rem;margin-bottom:0.6rem">⚙️ How It Works</h3>
         <ol style="color:var(--text-secondary);font-size:0.82rem;padding-left:1.1rem;line-height:2.1">
           <li>Enter your website description</li>
-          <li>Add an OpenAI or Gemini API key for real AI-generated pages</li>
-          <li>AI writes complete, unique HTML line-by-line (watch the log!)</li>
+          <li>The engine tries <strong>Ollama</strong> (local) → <strong>built-in GPU engine</strong> → <strong>Gemini</strong> (optional)</li>
+          <li>AI writes complete, unique HTML line-by-line — watch the log!</li>
           <li>Your admin device ID is embedded as permanent page owner</li>
           <li>Preview opens in a new tab instantly</li>
-          <li>Download the HTML file or auto-commit to GitHub via token</li>
-          <li>Page goes live on GitHub Pages</li>
+          <li>Enter your <code>ghp_…</code> token once — it's saved and used automatically</li>
+          <li>Page is committed to GitHub and goes live on GitHub Pages</li>
         </ol>
       </div>
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">

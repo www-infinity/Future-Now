@@ -749,10 +749,35 @@ async function commitPageViaAPI(slugName, html, token) {
   return res;
 }
 
-/* ── LLM-powered HTML generation ── */
+/* ── Infinity AI Engine (built-in LLM, no external paid APIs) ── */
 
 /**
- * Read an SSE stream from OpenAI or Gemini, accumulate text, and stream
+ * Build the system prompt for HTML generation.
+ * Shared by all LLM providers.
+ */
+function buildSystemPrompt(adminId) {
+  const safeAdmin = (adminId || 'unknown').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `You are an expert web developer building pages for the Infinity Engine platform.
+Generate a complete, self-contained HTML page for the user's request.
+
+STRICT RULES — follow exactly:
+1. Output ONLY the raw HTML document (<!DOCTYPE html> … </html>). No markdown, no explanations, no code fences.
+2. ALL CSS inline inside a <style> block in <head>. No external stylesheets or CDN links.
+3. Choose dark accent colours that match the topic (e.g. gold for Zelda, orange for Bitcoin).
+4. MUST include in <head>: <meta name="infinity:admin" content="${safeAdmin}">
+5. MUST include in <head>: <meta name="generator" content="Infinity AI Website Builder">
+6. Navigation bar: brand link "∞ Infinity Pages" pointing to ../../index.html, and a "← All Pages" link to ../../pages/.
+7. Yellow warning bar below nav: ⚠️ Infinity System Notice — admin of this page is permanently recorded.
+8. Hero section: large emoji icon, H1 title, and a descriptive paragraph relevant to the topic.
+9. Multiple rich content sections with REAL, detailed information about the specific topic — no generic filler.
+10. An "Admin & Ownership" section that displays the device ID: ${safeAdmin}
+11. Footer: "∞ [page title] | Built by Infinity AI Website Builder · All Pages"
+12. Fully responsive layout (works on mobile, min-width 320px).
+13. Zero external resources (no Google Fonts, no CDN images, no remote scripts).`;
+}
+
+/**
+ * Read an SSE stream (used by Gemini), accumulate text, and stream
  * completed lines to the build log via logLine().
  * @param {Response}  response    Fetch Response with body stream
  * @param {Function}  extractText (parsedJSON) => string delta
@@ -785,7 +810,7 @@ async function readSSEStream(response, extractText, logLine) {
         const delta = extractText(JSON.parse(payload));
         if (delta) { fullText += delta; lineBuf += delta; flushLines(false); }
       } catch (parseErr) {
-        // Skip malformed SSE chunks — common at stream boundaries; log at debug level only
+        // Skip malformed SSE chunks — common at stream boundaries
         /* console.debug('[infinity] SSE parse skip:', parseErr.message); */
       }
     }
@@ -815,89 +840,212 @@ function stripMarkdownFences(text) {
     .trim();
 }
 
+/** Cached WebLLM engine instance — persists across builds in the same page session. */
+let _webLLMEngine = null;
+
 /**
- * Call OpenAI or Google Gemini to generate a complete HTML page for the prompt.
- * Key prefix detection: "sk-" / "sess-" → OpenAI; "AIza" → Gemini.
- * Streams each HTML line to the build log as it arrives.
- * Falls back to null on any API error (caller uses template generator instead).
+ * Try the built-in browser AI engine (WebLLM via WebGPU).
+ * Downloads the model once (~600 MB), then runs 100% locally — no API key, no cost.
+ * Returns null if WebGPU is unavailable or the model fails to load.
+ */
+async function callWebLLMForHTML(userPrompt, adminId, logLine) {
+  // Require WebGPU
+  if (!navigator.gpu) {
+    logLine('ℹ️ WebGPU not available — try Chrome or Edge on a GPU-equipped device for the built-in engine', 'warn');
+    return null;
+  }
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) throw new Error('no adapter');
+  } catch {
+    logLine('ℹ️ WebGPU adapter unavailable — built-in engine skipped', 'warn');
+    return null;
+  }
+
+  logLine('🚀 WebGPU detected — starting Infinity built-in AI engine…');
+
+  let webllm;
+  try {
+    // Dynamic import keeps the heavy library out of the initial page load
+    webllm = await import('https://esm.sh/@mlc-ai/web-llm@0.2.79');
+  } catch (e) {
+    logLine(`⚠️ Could not load AI engine library: ${e.message}`, 'warn');
+    return null;
+  }
+
+  const MODEL = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
+
+  if (!_webLLMEngine) {
+    logLine('⬇️ Loading AI model (first run: ~600 MB download, cached after that)…');
+    _webLLMEngine = await webllm.CreateMLCEngine(MODEL, {
+      initProgressCallback: (report) => {
+        if (report.text) logLine(`⚙️ ${report.text}`, 'code');
+      }
+    });
+    logLine('✅ AI model loaded and ready');
+  } else {
+    logLine('✅ AI model already cached — ready instantly');
+  }
+
+  logLine('🧠 Generating HTML page…');
+  logLine('─────────────────────────────────────');
+
+  const chunks = await _webLLMEngine.chat.completions.create({
+    messages: [
+      { role: 'system', content: buildSystemPrompt(adminId) },
+      { role: 'user',   content: `Build this website: ${userPrompt}` }
+    ],
+    stream: true,
+    max_tokens: 4096,
+    temperature: 0.7
+  });
+
+  let html = '';
+  for await (const chunk of chunks) {
+    const delta = chunk.choices[0]?.delta?.content || '';
+    if (delta) {
+      html += delta;
+      const firstLine = delta.split('\n')[0];
+      if (firstLine.trim()) logLine(firstLine, 'code');
+    }
+  }
+
+  if (!html || html.length < 200) return null;
+  return ensureAdminMeta(stripMarkdownFences(html), adminId);
+}
+
+/**
+ * Try Ollama running locally at http://localhost:11434.
+ * Completely free — uses whatever model the user has pulled (defaults to llama3.2).
+ * Returns null silently if Ollama is not running.
+ */
+async function callOllamaForHTML(userPrompt, adminId, logLine) {
+  logLine('🦙 Checking for local Ollama at localhost:11434…');
+
+  let response;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    response = await fetch('http://localhost:11434/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: 'llama3.2',
+        messages: [
+          { role: 'system', content: buildSystemPrompt(adminId) },
+          { role: 'user',   content: `Build this website: ${userPrompt}` }
+        ],
+        stream: true
+      })
+    });
+    clearTimeout(timeoutId);
+  } catch {
+    // Ollama not running — expected on most setups, not an error
+    return null;
+  }
+
+  if (!response.ok) return null;
+
+  logLine('🦙 Ollama connected — streaming HTML…');
+  logLine('─────────────────────────────────────');
+
+  const reader  = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText  = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        const parsed = JSON.parse(line);
+        const delta = parsed.message?.content || '';
+        if (delta) {
+          fullText += delta;
+          const firstLine = delta.split('\n')[0];
+          if (firstLine.trim()) logLine(firstLine, 'code');
+        }
+        if (parsed.done) break;
+      } catch { /* skip malformed chunks */ }
+    }
+  }
+
+  if (!fullText || fullText.length < 200) return null;
+  return ensureAdminMeta(stripMarkdownFences(fullText), adminId);
+}
+
+/**
+ * Call Google Gemini API (free tier at https://aistudio.google.com — no credit card needed).
+ * Key starts with "AIza". Streams HTML live to the build log.
+ */
+async function callGeminiForHTML(userPrompt, adminId, apiKey, logLine) {
+  logLine('🔮 Calling Gemini API…');
+  // Gemini requires the API key as a URL query parameter (official API design).
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${encodeURIComponent(apiKey)}&alt=sse`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: `${buildSystemPrompt(adminId)}\n\nUser request: ${userPrompt}` }] }],
+      generationConfig: { maxOutputTokens: 8192, temperature: 0.7 }
+    })
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Gemini API error ${response.status}`);
+  }
+  logLine('─────────────────────────────────────');
+  const html = await readSSEStream(
+    response,
+    parsed => parsed.candidates?.[0]?.content?.parts?.[0]?.text || '',
+    logLine
+  );
+  return ensureAdminMeta(stripMarkdownFences(html), adminId);
+}
+
+/**
+ * Main LLM router — tries providers in priority order (all free, no OpenAI):
+ *   1. Ollama  (local, free, fastest if running)
+ *   2. WebLLM  (built-in browser engine via WebGPU, free, no key needed)
+ *   3. Gemini  (optional cloud API, free tier — key starts "AIza")
+ * Returns null on all failures → caller falls back to template generator.
  * @returns {Promise<string|null>}
  */
 async function callLLMForHTML(userPrompt, adminId, apiKey, logLine) {
-  const safeAdmin   = (adminId || 'unknown').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const systemPrompt = `You are an expert web developer building pages for the Infinity Engine platform.
-Generate a complete, self-contained HTML page for the user's request.
-
-STRICT RULES — follow exactly:
-1. Output ONLY the raw HTML document (<!DOCTYPE html> … </html>). No markdown, no explanations, no code fences.
-2. ALL CSS inline inside a <style> block in <head>. No external stylesheets or CDN links.
-3. Choose dark accent colours that match the topic (e.g. gold for Zelda, orange for Bitcoin).
-4. MUST include in <head>: <meta name="infinity:admin" content="${safeAdmin}">
-5. MUST include in <head>: <meta name="generator" content="Infinity AI Website Builder">
-6. Navigation bar: brand link "∞ Infinity Pages" pointing to ../../index.html, and a "← All Pages" link to ../../pages/.
-7. Yellow warning bar below nav: ⚠️ Infinity System Notice — admin of this page is permanently recorded.
-8. Hero section: large emoji icon, H1 title, and a descriptive paragraph relevant to the topic.
-9. Multiple rich content sections with REAL, detailed information about the specific topic — no generic filler.
-10. An "Admin & Ownership" section that displays the device ID: ${safeAdmin}
-11. Footer: "∞ [page title] | Built by Infinity AI Website Builder · All Pages"
-12. Fully responsive layout (works on mobile, min-width 320px).
-13. Zero external resources (no Google Fonts, no CDN images, no remote scripts).`;
-
-  const isGemini = apiKey.startsWith('AIza');
-
-  let response;
-  if (isGemini) {
-    // Gemini requires the API key as a URL query parameter (this is the official API design).
-    // The key is therefore visible in browser network logs; users should treat it as a
-    // low-privilege, rate-limited AI key and not a secret credential.
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${encodeURIComponent(apiKey)}&alt=sse`;
-    response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nUser request: ${userPrompt}` }] }],
-        generationConfig: { maxOutputTokens: 8192, temperature: 0.7 }
-      })
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Gemini API error ${response.status}`);
-    }
-    const html = await readSSEStream(
-      response,
-      parsed => parsed.candidates?.[0]?.content?.parts?.[0]?.text || '',
-      logLine
-    );
-    return ensureAdminMeta(stripMarkdownFences(html), adminId);
-  } else {
-    // OpenAI-compatible API (sk-..., sess-..., or custom)
-    response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user',   content: `Build this website: ${userPrompt}` }
-        ],
-        stream: true,
-        max_tokens: 4096
-      })
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error?.message || `OpenAI API error ${response.status}`);
-    }
-    const html = await readSSEStream(
-      response,
-      parsed => parsed.choices?.[0]?.delta?.content || '',
-      logLine
-    );
-    return ensureAdminMeta(stripMarkdownFences(html), adminId);
+  // 1. Ollama (localhost, completely free, highest quality)
+  try {
+    const result = await callOllamaForHTML(userPrompt, adminId, logLine);
+    if (result && result.length > 200) return result;
+  } catch (e) {
+    logLine(`⚠️ Ollama error: ${e.message}`, 'warn');
   }
+
+  // 2. Built-in WebGPU engine (free, runs in browser, no key required)
+  try {
+    const result = await callWebLLMForHTML(userPrompt, adminId, logLine);
+    if (result && result.length > 200) return result;
+  } catch (e) {
+    logLine(`⚠️ Browser AI engine error: ${e.message}`, 'warn');
+  }
+
+  // 3. Gemini API (optional, free tier available — enter key in Advanced section)
+  if (apiKey && apiKey.startsWith('AIza')) {
+    try {
+      const result = await callGeminiForHTML(userPrompt, adminId, apiKey, logLine);
+      if (result && result.length > 200) return result;
+    } catch (e) {
+      logLine(`⚠️ Gemini error: ${e.message} — falling back to template generator`, 'warn');
+    }
+  }
+
+  return null; // caller uses template generator
 }
+
+/** localStorage key for persisting the GitHub token across page loads. */
+const GHP_TOKEN_KEY = 'infinity_ghp_token';
 
 function initAIBuilder() {
   const promptInput = $('#ai-prompt');
@@ -909,6 +1057,26 @@ function initAIBuilder() {
   const adminIdEl = document.getElementById('device-admin-id');
   const adminId = getDeviceAdminId();
   if (adminIdEl) adminIdEl.textContent = adminId;
+
+  // ── GHP_TOKEN persistence ──
+  // Auto-fill the token field from localStorage so users never have to re-enter it.
+  const tokenInput = document.getElementById('ghp-token');
+  if (tokenInput) {
+    const saved = localStorage.getItem(GHP_TOKEN_KEY);
+    if (saved) {
+      tokenInput.value = saved;
+      tokenInput.setAttribute('title', 'Token loaded from saved settings');
+    }
+    // Save whenever the user edits the field
+    tokenInput.addEventListener('change', () => {
+      const val = tokenInput.value.trim();
+      if (val) {
+        localStorage.setItem(GHP_TOKEN_KEY, val);
+      } else {
+        localStorage.removeItem(GHP_TOKEN_KEY);
+      }
+    });
+  }
 
   const TEMPLATES = {
     zelda:   { name: 'zelda_tribute',  theme: 'Zelda Fan Site',   accent: '#ffd700', icon: '🗡️', desc: 'A legendary tribute to The Legend of Zelda universe.' },
@@ -966,9 +1134,9 @@ function initAIBuilder() {
     const slugName = promptLower.replace(/[^a-z0-9]+/g, '_').slice(0, 30).replace(/^_|_$/g, '');
     const pagePath = `pages/${slugName}/`;
 
-    // Read AI API key (OpenAI sk-... or Gemini AIza...)
-    const aiKeyInput = document.getElementById('ai-api-key');
-    const aiKey = aiKeyInput ? aiKeyInput.value.trim() : '';
+    // Optional Gemini API key (free tier — only used if WebGPU & Ollama both unavailable)
+    const geminiKeyInput = document.getElementById('gemini-api-key');
+    const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
 
     logLine('🤖 Infinity AI Engine initialising…');
     await new Promise(r => setTimeout(r, 180));
@@ -981,25 +1149,20 @@ function initAIBuilder() {
 
     let html;
 
-    if (aiKey) {
-      // ── LLM path: call OpenAI or Gemini ──
-      const provider = aiKey.startsWith('AIza') ? 'Gemini 1.5 Flash' : 'GPT-4o-mini';
-      logLine(`🧠 Sending prompt to ${provider} — streaming live HTML…`);
-      logLine('─────────────────────────────────────');
-      try {
-        html = await callLLMForHTML(prompt, adminId, aiKey, logLine);
-        if (!html || html.length < 200) throw new Error('LLM returned empty or too-short response');
-      } catch (llmErr) {
-        logLine(`⚠️ LLM error: ${llmErr.message} — falling back to template generator`, 'warn');
-        html = null;
-      }
+    // ── LLM path: Ollama → WebGPU → Gemini ──
+    logLine('🧠 Starting AI generation (Ollama → built-in GPU engine → Gemini)…');
+    try {
+      html = await callLLMForHTML(prompt, adminId, geminiKey, logLine);
+      if (!html || html.length < 200) { html = null; }
+    } catch (llmErr) {
+      logLine(`⚠️ AI engine error: ${llmErr.message} — using template generator`, 'warn');
+      html = null;
     }
 
     if (!html) {
       // ── Template fallback path ──
-      if (!aiKey) {
-        logLine('ℹ️  No AI key — using built-in template generator. Add an OpenAI or Gemini key for real AI pages.', 'warn');
-      }
+      logLine('ℹ️  AI engines unavailable — using built-in template generator.', 'warn');
+      logLine('    (For the GPU engine: use Chrome/Edge with hardware acceleration enabled)', 'warn');
       logLine(`🎨 Applying theme: ${tmpl.theme} (accent ${tmpl.accent})`);
       await new Promise(r => setTimeout(r, 160));
       logLine('📝 Writing <!DOCTYPE html> …');
@@ -1062,10 +1225,11 @@ function initAIBuilder() {
     dlLink.textContent = '⬇️ Download HTML';
     output.appendChild(dlLink);
 
-    // Optional: commit via GitHub API if token is provided
-    const tokenInput = document.getElementById('ghp-token');
+    // Commit via GitHub API using the saved/entered token
     const token = tokenInput ? tokenInput.value.trim() : '';
     if (token) {
+      // Persist token so it's remembered next time
+      localStorage.setItem(GHP_TOKEN_KEY, token);
       const statusLine = logLine('🔐 Committing to GitHub via GHP_TOKEN…');
 
       try {
@@ -1090,7 +1254,7 @@ function initAIBuilder() {
         logLine(`⚠️ Could not reach GitHub API: ${e.message}`, 'warn');
       }
     } else {
-      logLine('ℹ️  No GHP token — page not committed. Enter a GitHub token above to auto-commit live.', 'warn');
+      logLine('ℹ️  No GitHub token saved. Enter your ghp_… token in the field above — it will be remembered automatically.', 'warn');
     }
 
     showToast('🚀 Site built: ' + pagePath);
