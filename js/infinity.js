@@ -1044,8 +1044,6 @@ async function callLLMForHTML(userPrompt, adminId, apiKey, logLine) {
   return null; // caller uses template generator
 }
 
-/** localStorage key for persisting the GitHub token across page loads. */
-const GHP_TOKEN_KEY = 'infinity_ghp_token';
 
 function initAIBuilder() {
   const promptInput = $('#ai-prompt');
@@ -1057,26 +1055,6 @@ function initAIBuilder() {
   const adminIdEl = document.getElementById('device-admin-id');
   const adminId = getDeviceAdminId();
   if (adminIdEl) adminIdEl.textContent = adminId;
-
-  // ── GHP_TOKEN persistence ──
-  // Auto-fill the token field from localStorage so users never have to re-enter it.
-  const tokenInput = document.getElementById('ghp-token');
-  if (tokenInput) {
-    const saved = localStorage.getItem(GHP_TOKEN_KEY);
-    if (saved) {
-      tokenInput.value = saved;
-      tokenInput.setAttribute('title', 'Token loaded from saved settings');
-    }
-    // Save whenever the user edits the field
-    tokenInput.addEventListener('change', () => {
-      const val = tokenInput.value.trim();
-      if (val) {
-        localStorage.setItem(GHP_TOKEN_KEY, val);
-      } else {
-        localStorage.removeItem(GHP_TOKEN_KEY);
-      }
-    });
-  }
 
   const TEMPLATES = {
     zelda:   { name: 'zelda_tribute',  theme: 'Zelda Fan Site',   accent: '#ffd700', icon: '🗡️', desc: 'A legendary tribute to The Legend of Zelda universe.' },
@@ -1225,11 +1203,9 @@ function initAIBuilder() {
     dlLink.textContent = '⬇️ Download HTML';
     output.appendChild(dlLink);
 
-    // Commit via GitHub API using the saved/entered token
-    const token = tokenInput ? tokenInput.value.trim() : '';
+    // Commit via GitHub API using the GHP_TOKEN injected at deploy time
+    const token = (window.__BUILDER_CFG && window.__BUILDER_CFG.ghp) || '';
     if (token) {
-      // Persist token so it's remembered next time
-      localStorage.setItem(GHP_TOKEN_KEY, token);
       const statusLine = logLine('🔐 Committing to GitHub via GHP_TOKEN…');
 
       try {
@@ -1247,14 +1223,14 @@ function initAIBuilder() {
           output.appendChild(liveLink);
         } else {
           const err = await res.json().catch(() => ({}));
-          statusLine.textContent = `⚠️ GitHub commit failed: ${err.message || res.status}. Check your token.`;
+          statusLine.textContent = `⚠️ GitHub commit failed: ${err.message || res.status}. Check GHP_TOKEN secret.`;
           statusLine.className += ' log-warn';
         }
       } catch (e) {
         logLine(`⚠️ Could not reach GitHub API: ${e.message}`, 'warn');
       }
     } else {
-      logLine('ℹ️  No GitHub token saved. Enter your ghp_… token in the field above — it will be remembered automatically.', 'warn');
+      logLine('ℹ️  GitHub commit skipped — GHP_TOKEN secret not configured in this deployment.', 'warn');
     }
 
     showToast('🚀 Site built: ' + pagePath);

@@ -33,6 +33,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Inject builder config
+        env:
+          GHP: ${{ secrets.GHP_TOKEN }}
+        run: |
+          python3 -c "import json,os; print('window.__BUILDER_CFG=' + json.dumps({'ghp': os.environ.get('GHP','')}) + ';')" > js/builder-config.js
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

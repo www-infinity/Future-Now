@@ -77,13 +77,6 @@
       color: var(--accent-cyan);
       word-break: break-all;
     }
-    .token-row {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .token-row .form-input { flex: 1; min-width: 0; }
   </style>
 </head>
 <body data-page="builder">
@@ -134,20 +127,11 @@
         placeholder="e.g. Build an awesome Zelda fan site with dark fantasy theme"></textarea>
     </div>
 
-    <div class="token-row">
-      <input type="password" id="ghp-token" class="form-input"
-        placeholder="🔐 GitHub Token (ghp_…) — enter once, saved automatically"
-        autocomplete="off"
-        style="font-family:monospace;font-size:0.82rem"
-        aria-label="GitHub Personal Access Token">
+    <div style="margin-top:0.75rem">
       <button id="ai-build-btn" class="btn btn-purple" style="white-space:nowrap;padding:0.7rem 1.25rem">
         🚀 Build &amp; Commit
       </button>
     </div>
-    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:0.4rem">
-      Token needs <code>contents: write</code> scope. Enter it once — the engine saves it in your browser and uses it automatically every time.
-      <span style="color:var(--accent-orange)">⚠️ Stored in plain text in browser localStorage — only use on your own device.</span>
-    </p>
 
     <details style="margin-top:0.75rem">
       <summary style="font-size:0.78rem;color:var(--text-muted);cursor:pointer;user-select:none">
@@ -212,7 +196,6 @@
           <li>AI writes complete, unique HTML line-by-line — watch the log!</li>
           <li>Your admin device ID is embedded as permanent page owner</li>
           <li>Preview opens in a new tab instantly</li>
-          <li>Enter your <code>ghp_…</code> token once — it's saved and used automatically</li>
           <li>Page is committed to GitHub and goes live on GitHub Pages</li>
         </ol>
       </div>
@@ -237,6 +220,7 @@
   </footer>
 
   <div id="toast"></div>
+  <script src="js/builder-config.js"></script>
   <script src="js/infinity.js"></script>
   <script>
     function setPrompt(text) {
