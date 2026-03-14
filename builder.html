@@ -152,6 +152,27 @@
       </div>
     </details>
 
+    <details style="margin-top:0.75rem" id="ghp-token-section">
+      <summary style="font-size:0.78rem;color:var(--text-muted);cursor:pointer;user-select:none">
+        🔑 Advanced: GitHub Personal Access Token (required to commit pages)
+      </summary>
+      <div style="margin-top:0.5rem">
+        <p style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.4rem">
+          A <a href="https://github.com/settings/tokens/new?scopes=repo&description=Infinity+AI+Builder" target="_blank" rel="noopener" style="color:var(--accent-cyan)">GitHub PAT with <code>repo</code> scope</a>
+          is needed to commit generated pages to GitHub. Only required when the <code>GHP_TOKEN</code> repository secret is not configured.
+          The token is saved in your browser's localStorage and never sent anywhere except GitHub's API.
+        </p>
+        <input type="password" id="ghp-token" class="form-input"
+          placeholder="ghp_… GitHub personal access token"
+          autocomplete="off"
+          style="font-family:monospace;font-size:0.82rem"
+          aria-label="GitHub Personal Access Token (optional)">
+        <p style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem">
+          Token is stored locally in localStorage and auto-filled next time you visit this page.
+        </p>
+      </div>
+    </details>
+
     <!-- Build Log -->
     <div id="ai-output" aria-live="polite" aria-label="Build log"></div>
 
