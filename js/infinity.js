@@ -1045,6 +1045,22 @@ async function callLLMForHTML(userPrompt, adminId, apiKey, logLine) {
 }
 
 
+const GHP_TOKEN_STORAGE_KEY = 'infinity_ghp_token';
+
+/**
+ * Returns the best available GitHub personal access token:
+ *   1. Token injected at deploy time via window.__BUILDER_CFG.ghp
+ *   2. Token entered manually in #ghp-token input
+ *   3. Token previously saved to localStorage
+ * Returns an empty string when none is available.
+ */
+function getGhpToken() {
+  if (window.__BUILDER_CFG && window.__BUILDER_CFG.ghp) return window.__BUILDER_CFG.ghp;
+  const input = document.getElementById('ghp-token');
+  if (input && input.value.trim()) return input.value.trim();
+  return localStorage.getItem(GHP_TOKEN_STORAGE_KEY) || '';
+}
+
 function initAIBuilder() {
   const promptInput = $('#ai-prompt');
   const buildBtn = $('#ai-build-btn');
@@ -1055,6 +1071,30 @@ function initAIBuilder() {
   const adminIdEl = document.getElementById('device-admin-id');
   const adminId = getDeviceAdminId();
   if (adminIdEl) adminIdEl.textContent = adminId;
+
+  // Auto-fill GHP token input from localStorage (only when deploy-time token absent)
+  const ghpInput = document.getElementById('ghp-token');
+  if (ghpInput) {
+    const deployToken = window.__BUILDER_CFG && window.__BUILDER_CFG.ghp;
+    if (deployToken) {
+      // Deploy-time token is present — hide the manual entry section
+      const ghpSection = document.getElementById('ghp-token-section');
+      if (ghpSection) ghpSection.style.display = 'none';
+    } else {
+      // No deploy-time token — restore saved token from localStorage
+      const saved = localStorage.getItem(GHP_TOKEN_STORAGE_KEY);
+      if (saved) ghpInput.value = saved;
+    }
+    // Persist token to localStorage whenever it changes
+    ghpInput.addEventListener('input', () => {
+      const val = ghpInput.value.trim();
+      if (val) {
+        localStorage.setItem(GHP_TOKEN_STORAGE_KEY, val);
+      } else {
+        localStorage.removeItem(GHP_TOKEN_STORAGE_KEY);
+      }
+    });
+  }
 
   const TEMPLATES = {
     zelda:   { name: 'zelda_tribute',  theme: 'Zelda Fan Site',   accent: '#ffd700', icon: '🗡️', desc: 'A legendary tribute to The Legend of Zelda universe.' },
@@ -1203,8 +1243,9 @@ function initAIBuilder() {
     dlLink.textContent = '⬇️ Download HTML';
     output.appendChild(dlLink);
 
-    // Commit via GitHub API using the GHP_TOKEN injected at deploy time
-    const token = (window.__BUILDER_CFG && window.__BUILDER_CFG.ghp) || '';
+    // Commit via GitHub API using the GHP_TOKEN injected at deploy time,
+    // or a personal access token entered manually by the user.
+    const token = getGhpToken();
     if (token) {
       const statusLine = logLine('🔐 Committing to GitHub via GHP_TOKEN…');
 
@@ -1230,7 +1271,7 @@ function initAIBuilder() {
         logLine(`⚠️ Could not reach GitHub API: ${e.message}`, 'warn');
       }
     } else {
-      logLine('ℹ️  GitHub commit skipped — GHP_TOKEN secret not configured in this deployment.', 'warn');
+      logLine('ℹ️  GitHub commit skipped — no token available. Configure a GitHub Personal Access Token in the "🔑 Advanced" section above to enable commits.', 'warn');
     }
 
     showToast('🚀 Site built: ' + pagePath);
