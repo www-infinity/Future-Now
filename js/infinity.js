@@ -383,7 +383,7 @@ function initAIBuilder() {
         });
 
         const link = document.createElement('a');
-        link.href = pagePath;
+        link.href = pagePath.replace(/^\//, '');
         link.className = 'btn btn-primary';
         link.style.marginTop = '0.75rem';
         link.style.display = 'inline-flex';
