@@ -734,11 +734,13 @@ footer a:hover {
 
 /* ── Hamburger Menu ── */
 .nav-hamburger {
+  --hamburger-h: 20px;
+  --bar-h: 2px;
   display: none;
   flex-direction: column;
   justify-content: space-between;
   width: 28px;
-  height: 20px;
+  height: var(--hamburger-h);
   cursor: pointer;
   background: none;
   border: none;
@@ -748,15 +750,19 @@ footer a:hover {
 
 .nav-hamburger span {
   display: block;
-  height: 2px;
+  height: var(--bar-h);
   background: var(--accent-cyan);
   border-radius: 2px;
   transition: all 0.25s ease;
 }
 
-.nav-hamburger.open span:nth-child(1) { transform: translateY(9px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(1) {
+  transform: translateY(calc(var(--hamburger-h) / 2 - var(--bar-h) / 2)) rotate(45deg);
+}
 .nav-hamburger.open span:nth-child(2) { opacity: 0; }
-.nav-hamburger.open span:nth-child(3) { transform: translateY(-9px) rotate(-45deg); }
+.nav-hamburger.open span:nth-child(3) {
+  transform: translateY(calc(-1 * (var(--hamburger-h) / 2 - var(--bar-h) / 2))) rotate(-45deg);
+}
 
 /* ── Warning Banner ── */
 .system-warning {

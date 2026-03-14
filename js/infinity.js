@@ -529,6 +529,12 @@ function initLibraryPage() {
  * Returns a stable, session-persistent device fingerprint used as the
  * admin/owner ID for pages built on this device. Stored in localStorage.
  */
+/**
+ * Returns a stable device identifier stored in localStorage.
+ * NOTE: This is a convenience identifier, not a security mechanism.
+ * It persists across page loads on the same device/browser profile but can
+ * be cleared by the user or spoofed. Do not rely on it for authentication.
+ */
 function getDeviceAdminId() {
   const ADMIN_KEY = 'infinity_admin_id';
   let id = localStorage.getItem(ADMIN_KEY);
@@ -782,12 +788,13 @@ function initAIBuilder() {
    */
   async function streamCodeToLog(html) {
     const lines = html.split('\n');
-    const MAX_LINES = 60; // show first 60 lines
+    const MAX_LINES = 60; // show up to 60 lines
     const step = Math.max(1, Math.floor(lines.length / MAX_LINES));
-    for (let i = 0; i < lines.length && i < MAX_LINES * step; i += step) {
+    let count = 0;
+    for (let i = 0; i < lines.length && count < MAX_LINES; i += step, count++) {
       logLine(lines[i] || '', 'code');
       // Small async pause every 8 lines so UI doesn't freeze
-      if (i % 8 === 0) await new Promise(r => setTimeout(r, 0));
+      if (count % 8 === 0) await new Promise(r => setTimeout(r, 0));
     }
     if (lines.length > MAX_LINES * step) {
       logLine(`  … (${lines.length} total lines) …`, 'code');
@@ -859,7 +866,8 @@ function initAIBuilder() {
       file_name: 'index.html',
       category: 'AI Generated',
       tags: ['ai-built', 'page'],
-      uploader: adminId,
+      uploader: 'ai_engine',
+      admin_id: adminId,
       folder: pagePath,
       status: 'approved',
       timestamp: new Date().toISOString(),
@@ -952,7 +960,7 @@ async function fetchBitcoinSeed() {
   try {
     const res = await fetch('https://blockchain.info/latestblock', {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined
+      signal: AbortSignal.timeout?.(5000)
     });
     if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();
