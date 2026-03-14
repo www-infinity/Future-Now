@@ -134,6 +134,18 @@
         placeholder="e.g. Build an awesome Zelda fan site with dark fantasy theme"></textarea>
     </div>
 
+    <div class="token-row" style="margin-bottom:0.5rem">
+      <input type="password" id="ai-api-key" class="form-input"
+        placeholder="🤖 AI Key (sk-… OpenAI or AIza… Gemini) — powers real HTML generation"
+        autocomplete="off"
+        style="font-family:monospace;font-size:0.82rem"
+        aria-label="AI API Key (OpenAI or Gemini)">
+    </div>
+    <p style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.75rem">
+      OpenAI key (<code>sk-…</code>) uses <strong>gpt-4o-mini</strong>; Gemini key (<code>AIza…</code>) uses <strong>gemini-1.5-flash</strong>.
+      Without a key the built-in template generator is used instead.
+    </p>
+
     <div class="token-row">
       <input type="password" id="ghp-token" class="form-input"
         placeholder="🔐 GitHub Token (ghp_…) — auto-commit live"
@@ -189,12 +201,12 @@
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
         <h3 style="font-size:0.95rem;margin-bottom:0.6rem">⚙️ How It Works</h3>
         <ol style="color:var(--text-secondary);font-size:0.82rem;padding-left:1.1rem;line-height:2.1">
-          <li>Engine reads your prompt</li>
-          <li>Writes complete HTML line-by-line (watch the log!)</li>
-          <li>Embeds your admin device ID as page owner</li>
+          <li>Enter your website description</li>
+          <li>Add an OpenAI or Gemini API key for real AI-generated pages</li>
+          <li>AI writes complete, unique HTML line-by-line (watch the log!)</li>
+          <li>Your admin device ID is embedded as permanent page owner</li>
           <li>Preview opens in a new tab instantly</li>
-          <li>Download the HTML file</li>
-          <li>Optionally auto-commits to GitHub via token</li>
+          <li>Download the HTML file or auto-commit to GitHub via token</li>
           <li>Page goes live on GitHub Pages</li>
         </ol>
       </div>
@@ -225,6 +237,18 @@
       document.getElementById('ai-prompt').value = text;
       document.getElementById('ai-prompt').focus();
     }
+    // Pre-fill prompt from ?prompt= URL param (used by Pages Edit buttons)
+    // or from sessionStorage set by pages/index.html
+    (function preloadPrompt() {
+      const params = new URLSearchParams(window.location.search);
+      const urlPrompt = params.get('prompt');
+      const ssPrompt = sessionStorage.getItem('infinity_builder_prompt');
+      const pre = urlPrompt || ssPrompt || '';
+      if (pre) {
+        setPrompt(pre);
+        sessionStorage.removeItem('infinity_builder_prompt');
+      }
+    })();
   </script>
 </body>
 </html>
