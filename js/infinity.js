@@ -5,6 +5,10 @@
 
 'use strict';
 
+/* ── Configuration ── */
+/** Repository identifier used for GitHub API calls — update if repo is renamed. */
+const GITHUB_REPO = 'www-infinity/Future-Now';
+
 /* ── Utility ── */
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
@@ -85,6 +89,210 @@ function typeToFolder(type) {
 function typeEmoji(type) {
   const map = { image: '🖼️', video: '🎬', html: '🌐', zip: '📦', document: '📄', upload: '📁' };
   return map[type] || '📁';
+}
+
+/* ── Flux Capacitor Canvas Animation ── */
+function initFluxCapacitor() {
+  const canvas = document.getElementById('flux-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let W, H, t = 0, animId;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    W = canvas.width = rect.width || window.innerWidth;
+    H = canvas.height = rect.height || 520;
+  }
+
+  window.addEventListener('resize', () => { resize(); });
+  resize();
+
+  /* Stars */
+  const stars = Array.from({ length: 220 }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    r: Math.random() * 1.4 + 0.3,
+    speed: Math.random() * 0.00015 + 0.00004,
+    opacity: Math.random() * 0.6 + 0.2
+  }));
+
+  function drawStars() {
+    stars.forEach(s => {
+      const x = s.x * W;
+      const y = s.y * H;
+      const flicker = 0.7 + 0.3 * Math.sin(t * 2.3 + s.x * 50);
+      ctx.beginPath();
+      ctx.arc(x, y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${s.opacity * flicker})`;
+      ctx.fill();
+      s.x -= s.speed;
+      if (s.x < 0) { s.x = 1; s.y = Math.random(); }
+    });
+  }
+
+  /* Perspective grid */
+  function drawGrid() {
+    const vpX = W / 2;
+    const vpY = H * 0.58;
+    const lines = 12;
+    ctx.save();
+    ctx.globalAlpha = 0.07 + 0.03 * Math.sin(t * 0.8);
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i <= lines; i++) {
+      const x = (W / lines) * i;
+      ctx.beginPath();
+      ctx.moveTo(x, H);
+      ctx.lineTo(vpX, vpY);
+      ctx.stroke();
+    }
+    for (let j = 1; j <= 7; j++) {
+      const prog = j / 7;
+      const y = vpY + (H - vpY) * prog;
+      const halfW = (W * prog) / 2;
+      ctx.beginPath();
+      ctx.moveTo(vpX - halfW, y);
+      ctx.lineTo(vpX + halfW, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* Flux Capacitor Y-shape */
+  function drawFluxCapacitor() {
+    const cx = W / 2;
+    const cy = H * 0.44;
+    const size = Math.min(W * 0.22, H * 0.35, 160);
+
+    const pulse = (Math.sin(t * 2.8) + 1) / 2;
+    const energyAlpha = 0.3 + pulse * 0.7;
+
+    /* Endpoints of Y */
+    const topX  = cx;
+    const topY  = cy - size;
+    const leftX  = cx - size * 0.82;
+    const leftY  = cy + size * 0.46;
+    const rightX = cx + size * 0.82;
+    const rightY = cy + size * 0.46;
+
+    /* Radial glow behind Y */
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 1.4);
+    grd.addColorStop(0, `rgba(0,229,255,${0.10 * energyAlpha})`);
+    grd.addColorStop(0.5, `rgba(162,89,255,${0.05 * energyAlpha})`);
+    grd.addColorStop(1, 'rgba(0,229,255,0)');
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 1.4, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    /* Draw one glowing arm */
+    function drawArm(x1, y1, x2, y2, beadPhase) {
+      const lg = ctx.createLinearGradient(x1, y1, x2, y2);
+      lg.addColorStop(0, 'rgba(0,229,255,0.9)');
+      lg.addColorStop(1, 'rgba(162,89,255,0.9)');
+
+      /* Outer glow layer */
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = `rgba(0,229,255,${0.12 + 0.08 * pulse})`;
+      ctx.lineWidth = 14;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 18;
+      ctx.stroke();
+      ctx.restore();
+
+      /* Core line */
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = lg;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      /* Energy bead */
+      const bp = ((t * 1.8 + beadPhase) % 1);
+      const bx = x1 + (x2 - x1) * bp;
+      const by = y1 + (y2 - y1) * bp;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(bx, by, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 16;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawArm(cx, cy, topX,   topY,   0.00);
+    drawArm(cx, cy, leftX,  leftY,  0.33);
+    drawArm(cx, cy, rightX, rightY, 0.66);
+
+    /* Junction node */
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 7 + pulse * 3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.7 + pulse * 0.3})`;
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 30 + pulse * 20;
+    ctx.fill();
+    ctx.restore();
+
+    /* End nodes */
+    [[topX, topY, '#00e5ff'], [leftX, leftY, '#a259ff'], [rightX, rightY, '#00ff88']].forEach(([x, y, c]) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, 5 + pulse * 2, 0, Math.PI * 2);
+      ctx.fillStyle = c;
+      ctx.shadowColor = c;
+      ctx.shadowBlur = 14 + pulse * 10;
+      ctx.fill();
+      ctx.restore();
+    });
+
+    /* Spark particles around junction */
+    for (let i = 0; i < 6; i++) {
+      const angle = (t * 2.5 + i * (Math.PI / 3)) % (Math.PI * 2);
+      const dist  = (size * 0.18) + (size * 0.08) * Math.sin(t * 4 + i);
+      const sx = cx + Math.cos(angle) * dist;
+      const sy = cy + Math.sin(angle) * dist;
+      const sa = 0.4 + 0.6 * Math.sin(t * 5 + i * 1.2);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,229,255,${sa})`;
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+
+    /* Deep space background */
+    const bg = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, H * 0.9);
+    bg.addColorStop(0,   'rgba(8,0,32,0.98)');
+    bg.addColorStop(0.5, 'rgba(4,4,18,0.98)');
+    bg.addColorStop(1,   'rgba(2,2,10,0.98)');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    drawGrid();
+    drawStars();
+    drawFluxCapacitor();
+
+    t += 0.016;
+    animId = requestAnimationFrame(animate);
+  }
+
+  animate();
 }
 
 /* ── Upload Handler ── */
@@ -317,6 +525,153 @@ function initLibraryPage() {
 }
 
 /* ── AI Site Builder ── */
+
+/**
+ * Generate full themed HTML for a built page.
+ * Returns an HTML string ready to be displayed or committed.
+ */
+function generateSiteHTML(prompt, tmpl, slugName) {
+  const safeTitle = prompt.replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 80);
+  const accent   = tmpl.accent;
+  const accentDim = accent + 'bb';
+  const theme    = tmpl.theme;
+  const desc     = tmpl.desc;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${safeTitle} — Infinity Pages</title>
+  <meta name="description" content="${desc.replace(/"/g, '&quot;')}">
+  <style>
+    :root { --accent: ${accent}; --accent-dim: ${accentDim}; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#04040e;color:#e8e8ff;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
+    nav{background:rgba(3,3,18,.96);border-bottom:1px solid rgba(0,229,255,.18);padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);}
+    .brand{color:var(--accent);font-weight:800;font-size:1.2rem;text-decoration:none;}
+    .back{color:#8888aa;text-decoration:none;font-size:.85rem;border:1px solid #22225a;padding:.3rem .7rem;border-radius:6px;transition:.2s;}
+    .back:hover{color:var(--accent);border-color:var(--accent);}
+    .hero{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4rem 2rem;background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(0,229,255,.07) 0%,transparent 60%);}
+    .hero-icon{font-size:5rem;margin-bottom:1.5rem;filter:drop-shadow(0 0 20px var(--accent));}
+    .hero h1{font-size:clamp(2.2rem,6vw,4rem);font-weight:900;color:var(--accent);text-shadow:0 0 40px ${accent}66;margin-bottom:1rem;letter-spacing:.02em;line-height:1.1;}
+    .hero p{color:#8888aa;font-size:1.1rem;max-width:540px;margin:0 auto 2.5rem;font-style:italic;}
+    .badge-built{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem 1rem;border:1px solid ${accent}55;border-radius:999px;color:${accent}aa;font-size:.8rem;background:${accent}0f;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;max-width:1100px;margin:0 auto;padding:4rem 2rem;}
+    .card{background:#0d0d24;border:1px solid #14143a;border-radius:12px;padding:1.75rem;transition:.2s;position:relative;overflow:hidden;}
+    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,${accent}55,transparent);opacity:0;transition:.2s;}
+    .card:hover{border-color:${accent}66;transform:translateY(-3px);box-shadow:0 8px 30px ${accent}18;}
+    .card:hover::before{opacity:1;}
+    .card-icon{font-size:2.5rem;margin-bottom:.75rem;display:block;}
+    .card h3{color:var(--accent);font-size:1.05rem;margin-bottom:.5rem;}
+    .card p{color:#8888aa;font-size:.875rem;line-height:1.6;}
+    footer{background:#06060f;border-top:1px solid #14143a;padding:2rem;text-align:center;color:#4a4a6a;font-size:.8rem;margin-top:4rem;}
+    footer a{color:#8888aa;text-decoration:none;}
+    footer a:hover{color:var(--accent);}
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="../../index.html" class="brand">∞ Infinity Pages</a>
+    <a href="../../pages/" class="back">← All Pages</a>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-icon">⚡</div>
+    <h1>${safeTitle}</h1>
+    <p>${desc}</p>
+    <div class="badge-built">🤖 Generated by Infinity AI Website Builder</div>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <span class="card-icon">🌐</span>
+      <h3>About This Site</h3>
+      <p>Built with the Infinity AI Website Builder from the prompt: <em>"${safeTitle}"</em>. Powered by the Infinity Engine.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">🖼️</span>
+      <h3>Media Library</h3>
+      <p>Assets for this page are sourced from the Infinity shared media library at <code>/library</code> and <code>/media/images</code>.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">⚙️</span>
+      <h3>Theme: ${theme}</h3>
+      <p>This page uses the <strong>${theme}</strong> visual theme with dynamic Infinity Engine styling.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">📡</span>
+      <h3>Live on GitHub Pages</h3>
+      <p>Served at <code>https://www-infinity.github.io/${GITHUB_REPO}/pages/${slugName}/</code> via GitHub Pages static hosting.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>
+      ⚡ ${safeTitle}
+      &nbsp;|&nbsp; Built by <a href="../../builder.html">Infinity AI Website Builder</a>
+      &nbsp;·&nbsp; <a href="../../pages/">All Pages</a>
+      &nbsp;·&nbsp; <a href="../../index.html">∞ Infinity Engine</a>
+    </p>
+    <p style="margin-top:.4rem;font-size:.72rem;opacity:.5">Generated ${new Date().toUTCString()}</p>
+  </footer>
+</body>
+</html>`;
+}
+
+/**
+ * Commit a generated page to GitHub via the Contents API.
+ * Requires a Personal Access Token with repo/contents write scope
+ * stored by the user in the builder's token field.
+ * The token is kept only in the current browser session (sessionStorage).
+ */
+
+/** UTF-8-safe base64 encoding for the GitHub Contents API. */
+function encodeBase64UTF8(str) {
+  return btoa(
+    Array.from(new TextEncoder().encode(str), b => String.fromCharCode(b)).join('')
+  );
+}
+
+async function commitPageViaAPI(slugName, html, token) {
+  const repoPath = `pages/${slugName}/index.html`;
+  const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${repoPath}`;
+
+  // Check if file already exists (need its SHA to update it)
+  let sha = null;
+  try {
+    const existing = await fetch(apiUrl, {
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json' }
+    });
+    if (existing.ok) {
+      const data = await existing.json();
+      sha = data.sha;
+    }
+    // A non-OK response (e.g. 404) simply means the file doesn't exist yet — that's expected.
+  } catch (networkErr) {
+    // Network error during the existence check — log and proceed without sha
+    console.warn('[infinity] GitHub API pre-flight check failed:', networkErr);
+  }
+
+  const body = {
+    message: `🤖 AI Builder: add page ${slugName}`,
+    content: encodeBase64UTF8(html),
+    ...(sha ? { sha } : {})
+  };
+
+  const res = await fetch(apiUrl, {
+    method: 'PUT',
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  return res;
+}
+
 function initAIBuilder() {
   const promptInput = $('#ai-prompt');
   const buildBtn = $('#ai-build-btn');
@@ -324,13 +679,14 @@ function initAIBuilder() {
   if (!buildBtn) return;
 
   const TEMPLATES = {
-    zelda: { name: 'zelda_tribute', theme: 'Zelda Fan Site', accent: '#ffd700', desc: 'A legendary tribute to The Legend of Zelda universe.' },
-    mario: { name: 'mario_world', theme: 'Mario World', accent: '#ff4444', desc: 'Jump into the Mushroom Kingdom.' },
-    bitcoin: { name: 'bitcoin_hub', theme: 'Bitcoin Hub', accent: '#f7931a', desc: 'Explore the world of Bitcoin and crypto.' },
-    default: { name: 'new_site', theme: 'New Project', accent: '#00e5ff', desc: 'A fresh Infinity-powered web page.' }
+    zelda:   { name: 'zelda_tribute',  theme: 'Zelda Fan Site',   accent: '#ffd700', desc: 'A legendary tribute to The Legend of Zelda universe.' },
+    mario:   { name: 'mario_world',    theme: 'Mario World',      accent: '#ff4444', desc: 'Jump into the Mushroom Kingdom.' },
+    bitcoin: { name: 'bitcoin_hub',    theme: 'Bitcoin Hub',      accent: '#f7931a', desc: 'Explore the world of Bitcoin and crypto.' },
+    infinity:{ name: 'infinity_flux',  theme: 'Infinity Flux',    accent: '#00e5ff', desc: 'A Flux Capacitor-powered Infinity Engine showcase.' },
+    default: { name: 'new_site',       theme: 'New Project',      accent: '#a259ff', desc: 'A fresh Infinity-powered web page.' }
   };
 
-  buildBtn.addEventListener('click', () => {
+  buildBtn.addEventListener('click', async () => {
     const prompt = (promptInput.value || '').trim().toLowerCase();
     if (!prompt) { showToast('Enter a prompt first', 'var(--accent-orange)'); return; }
 
@@ -339,59 +695,116 @@ function initAIBuilder() {
     output.style.display = 'block';
     output.innerHTML = '<p class="log-line">🤖 AI Engine starting…</p>';
 
-    const tmpl = Object.keys(TEMPLATES).find(k => prompt.includes(k)) ? TEMPLATES[Object.keys(TEMPLATES).find(k => prompt.includes(k))] : TEMPLATES.default;
-    const slugName = prompt.replace(/[^a-z0-9]+/g, '_').slice(0, 30) || tmpl.name;
-    const pagePath = `/pages/${slugName}/`;
+    const tmplKey = Object.keys(TEMPLATES).find(k => prompt.includes(k)) || 'default';
+    const tmpl = TEMPLATES[tmplKey];
+    const slugName = prompt.replace(/[^a-z0-9]+/g, '_').slice(0, 30);
+    const pagePath = `pages/${slugName}/`;
 
     const steps = [
       '📁 Creating page folder: ' + pagePath,
-      '🎨 Generating HTML structure…',
+      '🎨 Generating HTML structure with ' + tmpl.theme + ' theme…',
       '🖼️  Linking gallery assets from /library…',
-      '✨ Applying ' + tmpl.theme + ' theme…',
+      '✨ Applying Infinity Flux Capacitor visuals…',
       '🔗 Injecting asset references…',
       '📝 Writing index.html…',
-      '✅ Page published at ' + pagePath
+      '✅ Page ready!'
     ];
 
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < steps.length) {
-        const line = document.createElement('p');
-        line.className = 'log-line';
-        line.textContent = steps[i];
-        output.appendChild(line);
-        output.scrollTop = output.scrollHeight;
-        i++;
-      } else {
-        clearInterval(interval);
-        buildBtn.disabled = false;
-        buildBtn.textContent = '🚀 Build Site';
+    // Step log animation
+    await new Promise(resolve => {
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < steps.length) {
+          const line = document.createElement('p');
+          line.className = 'log-line';
+          line.textContent = steps[i];
+          output.appendChild(line);
+          output.scrollTop = output.scrollHeight;
+          i++;
+        } else {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 380);
+    });
 
-        // Record in metadata
-        addEntry({
-          file_id: generateFileId('page'),
-          type: 'html',
-          title: prompt,
-          file_name: 'index.html',
-          category: 'AI Generated',
-          tags: ['ai-built', 'page'],
-          uploader: 'ai_engine',
-          folder: pagePath,
-          status: 'approved',
-          timestamp: new Date().toISOString(),
-          url: pagePath
-        });
+    // Generate the actual HTML content
+    const html = generateSiteHTML(prompt, tmpl, slugName);
+    const blob = new Blob([html], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
 
-        const link = document.createElement('a');
-        link.href = pagePath.replace(/^\//, '');
-        link.className = 'btn btn-primary';
-        link.style.marginTop = '0.75rem';
-        link.style.display = 'inline-flex';
-        link.textContent = '🌐 View Page';
-        output.appendChild(link);
-        showToast('🚀 Site built: ' + pagePath);
+    // Metadata entry
+    addEntry({
+      file_id: generateFileId('page'),
+      type: 'html',
+      title: prompt,
+      file_name: 'index.html',
+      category: 'AI Generated',
+      tags: ['ai-built', 'page'],
+      uploader: 'ai_engine',
+      folder: pagePath,
+      status: 'approved',
+      timestamp: new Date().toISOString(),
+      url: pagePath
+    });
+
+    buildBtn.disabled = false;
+    buildBtn.textContent = '🚀 Build Site';
+
+    // "View Page" — opens generated HTML in new tab (no 404!)
+    const viewLink = document.createElement('a');
+    viewLink.href = blobUrl;
+    viewLink.target = '_blank';
+    viewLink.rel = 'noopener';
+    viewLink.className = 'btn btn-primary';
+    viewLink.style.cssText = 'margin-top:.75rem;display:inline-flex;margin-right:.5rem';
+    viewLink.textContent = '🌐 Preview Page';
+    output.appendChild(viewLink);
+
+    // "Download HTML" button
+    const dlLink = document.createElement('a');
+    dlLink.href = blobUrl;
+    dlLink.download = 'index.html';
+    dlLink.className = 'btn btn-secondary';
+    dlLink.style.cssText = 'margin-top:.75rem;display:inline-flex;margin-right:.5rem';
+    dlLink.textContent = '⬇️ Download HTML';
+    output.appendChild(dlLink);
+
+    // Optional: commit via GitHub API if token is provided
+    const tokenInput = document.getElementById('ghp-token');
+    const token = tokenInput ? tokenInput.value.trim() : '';
+    if (token) {
+      const statusLine = document.createElement('p');
+      statusLine.className = 'log-line';
+      statusLine.textContent = '🔐 Committing to GitHub…';
+      output.appendChild(statusLine);
+
+      try {
+        const res = await commitPageViaAPI(slugName, html, token);
+        if (res.ok) {
+          statusLine.textContent = `✅ Committed! Live at: https://www-infinity.github.io/Future-Now/${pagePath}`;
+
+          const liveLink = document.createElement('a');
+          liveLink.href = `https://www-infinity.github.io/Future-Now/${pagePath}`;
+          liveLink.target = '_blank';
+          liveLink.rel = 'noopener';
+          liveLink.className = 'btn btn-purple';
+          liveLink.style.cssText = 'margin-top:.75rem;display:inline-flex;';
+          liveLink.textContent = '🚀 View Live Site';
+          output.appendChild(liveLink);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          statusLine.textContent = `⚠️ GitHub commit failed: ${err.message || res.status}. Check your token.`;
+        }
+      } catch (e) {
+        const statusLine2 = document.createElement('p');
+        statusLine2.className = 'log-line';
+        statusLine2.textContent = `⚠️ Could not reach GitHub API: ${e.message}`;
+        output.appendChild(statusLine2);
       }
-    }, 420);
+    }
+
+    showToast('🚀 Site built: ' + pagePath);
   });
 }
 
@@ -437,7 +850,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Page detection
   const body = document.body.dataset.page;
-  if (body === 'dashboard') initDashboard();
+  if (body === 'dashboard') { initDashboard(); initFluxCapacitor(); }
   if (body === 'upload') initUploadPage();
   if (body === 'gallery') initGalleryPage(document.body.dataset.filter || 'all');
   if (body === 'library') initLibraryPage();

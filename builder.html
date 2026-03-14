@@ -81,6 +81,26 @@
           🚀 Build Site
         </button>
 
+        <!-- GitHub Token for committing built pages -->
+        <details style="margin-top:1.25rem">
+          <summary style="cursor:pointer;color:var(--text-secondary);font-size:0.85rem;user-select:none;padding:0.5rem 0">
+            🔐 GitHub Token (optional — to commit page live)
+          </summary>
+          <div style="margin-top:0.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem">
+            <p style="color:var(--text-muted);font-size:0.78rem;margin-bottom:0.75rem">
+              Enter a <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" style="color:var(--accent-cyan)">Personal Access Token</a>
+              with <code>contents: write</code> scope to commit the built page directly to the repository.
+              The token is used only in this browser session and never stored persistently.
+              <strong style="color:var(--accent-orange)">⚠️ Keep your token private — never share it or embed it in public code.</strong>
+              Alternatively, set <strong>GHP_TOKEN</strong> in your repository Secrets for the GitHub Actions deploy workflow.
+            </p>
+            <input type="password" id="ghp-token" class="form-input"
+              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              autocomplete="off"
+              style="font-family:monospace;font-size:0.85rem">
+          </div>
+        </details>
+
         <div style="margin-top:1.25rem">
           <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem">EXAMPLE PROMPTS</p>
           <div class="examples-grid">
@@ -102,6 +122,9 @@
             <div class="example-btn" onclick="setPrompt('Create an AI art portfolio')">
               <span class="eg-icon">🎨</span>AI art portfolio
             </div>
+            <div class="example-btn" onclick="setPrompt('Build an infinity flux capacitor showcase')">
+              <span class="eg-icon">⚡</span>Infinity Flux
+            </div>
           </div>
         </div>
       </div>
@@ -111,10 +134,10 @@
           <h3 style="font-size:1rem;margin-bottom:0.75rem">⚙️ How It Works</h3>
           <ol style="color:var(--text-secondary);font-size:0.875rem;padding-left:1.25rem;line-height:2">
             <li>AI reads your prompt</li>
-            <li>Creates <code>/pages/your_site/</code> folder</li>
-            <li>Generates HTML structure</li>
-            <li>Inserts images from <code>/library</code></li>
-            <li>Links gallery assets</li>
+            <li>Generates themed HTML instantly</li>
+            <li>Preview opens in a new tab (no 404!)</li>
+            <li>Download the HTML file</li>
+            <li>Optionally commit live via <strong>GHP_TOKEN</strong></li>
             <li>Publishes via GitHub Pages</li>
           </ol>
         </div>
@@ -122,7 +145,7 @@
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem">
           <h3 style="font-size:1rem;margin-bottom:0.75rem">🌐 Published Pages</h3>
           <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:0.75rem">
-            Finished pages are served at:
+            Committed pages are served at:
           </p>
           <code style="color:var(--accent-cyan);font-size:0.8rem;word-break:break-all">
             https://www-infinity.github.io/Future-Now/pages/your_site/
