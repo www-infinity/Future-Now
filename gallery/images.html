@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Images Gallery — Infinity Engine</title>
+  <meta name="description" content="Browse all uploaded images in the Infinity media library.">
+  <link rel="stylesheet" href="/css/infinity.css">
+</head>
+<body data-page="gallery" data-filter="image">
+
+  <nav>
+    <a href="/index.html" class="nav-brand"><span class="logo-icon">∞</span> Infinity Engine</a>
+    <ul class="nav-links">
+      <li><a href="/index.html">Dashboard</a></li>
+      <li><a href="/upload.html">Upload</a></li>
+      <li><a href="/gallery/index.html" class="active">Gallery</a></li>
+      <li><a href="/library/index.html">Library</a></li>
+      <li><a href="/builder.html">AI Builder</a></li>
+      <li><a href="/pages/">Pages</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <h1>🖼️ Images Gallery</h1>
+    <p>All approved images in the Infinity media library.</p>
+  </div>
+
+  <main>
+
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.5rem">
+      <a href="/gallery/index.html" class="btn btn-secondary btn-sm">All Media</a>
+      <a href="/gallery/images.html" class="btn btn-primary btn-sm">🖼️ Images</a>
+      <a href="/gallery/videos.html" class="btn btn-secondary btn-sm">🎬 Videos</a>
+    </div>
+
+    <div class="filter-bar">
+      <input type="search" id="gallery-search" placeholder="🔍 Search images…">
+      <span class="filter-tag active" data-filter="image">Images</span>
+    </div>
+
+    <div class="card-grid" id="gallery-grid">
+      <div class="empty-state" style="grid-column:1/-1">
+        <span class="empty-icon">🖼️</span>
+        <h3>No images yet</h3>
+        <p>Upload JPG, PNG, GIF, or WEBP files to see them here.</p>
+        <a href="/upload.html" class="btn btn-primary" style="margin-top:1rem">Upload Images</a>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>∞ Infinity Engine &nbsp;|&nbsp; <a href="/gallery/index.html">All Media</a> &nbsp;·&nbsp; <a href="/gallery/videos.html">Videos</a> &nbsp;·&nbsp; <a href="/upload.html">Upload</a></p>
+  </footer>
+
+  <div id="toast"></div>
+  <script src="/js/infinity.js"></script>
+</body>
+</html>

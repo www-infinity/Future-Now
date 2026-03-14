@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hosted Pages — Infinity Engine</title>
+  <meta name="description" content="All web pages hosted by the Infinity Media Engine via GitHub Pages.">
+  <link rel="stylesheet" href="/css/infinity.css">
+</head>
+<body>
+
+  <nav>
+    <a href="/index.html" class="nav-brand"><span class="logo-icon">∞</span> Infinity Engine</a>
+    <ul class="nav-links">
+      <li><a href="/index.html">Dashboard</a></li>
+      <li><a href="/upload.html">Upload</a></li>
+      <li><a href="/gallery/index.html">Gallery</a></li>
+      <li><a href="/library/index.html">Library</a></li>
+      <li><a href="/builder.html">AI Builder</a></li>
+      <li><a href="/pages/" class="active">Pages</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <h1>🌐 Hosted Pages</h1>
+    <p>Full web pages hosted via GitHub Pages. Built by users or the AI Website Builder.</p>
+  </div>
+
+  <main>
+
+    <div style="margin-bottom:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
+      <a href="/builder.html" class="btn btn-purple">🤖 Build New Page</a>
+      <a href="/upload.html" class="btn btn-secondary">⬆️ Upload HTML</a>
+    </div>
+
+    <div class="feature-grid">
+
+      <a href="/pages/zelda_tribute/" class="feature-card">
+        <span class="feature-icon">🗡️</span>
+        <h3>Zelda Tribute</h3>
+        <p>AI-generated Zelda fan site. Dark fantasy theme with hero banner and asset showcase.</p>
+        <div style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted)">/pages/zelda_tribute/</div>
+      </a>
+
+      <a href="/builder.html" class="feature-card" style="border-style:dashed">
+        <span class="feature-icon">➕</span>
+        <h3>Add Your Page</h3>
+        <p>Use the AI Builder to generate a new site, or upload an HTML folder directly.</p>
+        <div style="margin-top:0.75rem">
+          <span class="btn btn-primary btn-sm">Build with AI</span>
+        </div>
+      </a>
+
+    </div>
+
+    <div style="margin-top:2rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem">
+      <h3 style="font-size:1rem;margin-bottom:0.75rem">📁 Page Structure</h3>
+      <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:0.75rem">
+        Each hosted page lives in its own folder:
+      </p>
+      <pre style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;font-size:0.8rem;color:var(--accent-cyan);overflow-x:auto">/pages/project_name/
+├── index.html
+├── assets/
+└── images/</pre>
+      <p style="color:var(--text-secondary);font-size:0.875rem;margin-top:0.75rem">
+        Published URL: <code style="color:var(--accent-cyan)">https://www-infinity.github.io/Future-Now/pages/project_name/</code>
+      </p>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>∞ Infinity Engine &nbsp;|&nbsp; <a href="/builder.html">AI Builder</a> &nbsp;·&nbsp; <a href="/upload.html">Upload</a></p>
+  </footer>
+
+  <div id="toast"></div>
+  <script src="/js/infinity.js"></script>
+</body>
+</html>

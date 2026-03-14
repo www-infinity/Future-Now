@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinity Media &amp; Page Hosting Engine</title>
+  <meta name="description" content="Central media backbone for all Infinity projects — images, videos, HTML pages, and AI-generated websites.">
+  <link rel="stylesheet" href="/css/infinity.css">
+  <style>
+    .upload-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+    .upload-item-icon { font-size: 1.2rem; }
+    .upload-item-name { flex: 1; color: var(--text-primary); font-family: monospace; }
+    .upload-item-size { color: var(--text-muted); font-size: 0.8rem; }
+    .section-block { margin-bottom: 3rem; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-page="dashboard">
+
+  <nav>
+    <a href="/index.html" class="nav-brand">
+      <span class="logo-icon">∞</span> Infinity Engine
+    </a>
+    <ul class="nav-links">
+      <li><a href="/index.html" class="active">Dashboard</a></li>
+      <li><a href="/upload.html">Upload</a></li>
+      <li><a href="/gallery/index.html">Gallery</a></li>
+      <li><a href="/library/index.html">Library</a></li>
+      <li><a href="/builder.html">AI Builder</a></li>
+      <li><a href="/pages/">Pages</a></li>
+    </ul>
+  </nav>
+
+  <div class="hero">
+    <h1>Infinity Media &amp;<br>Page Hosting Engine</h1>
+    <p>The central media backbone for all Infinity projects. Store images, videos, HTML pages, and AI-generated websites — all in one place.</p>
+    <div class="hero-actions">
+      <a href="/upload.html" class="btn btn-primary">⬆️ Upload Media</a>
+      <a href="/builder.html" class="btn btn-purple">🤖 AI Site Builder</a>
+      <a href="/gallery/index.html" class="btn btn-secondary">🖼️ Gallery</a>
+    </div>
+  </div>
+
+  <main>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-number" id="stat-total">0</span>
+        <div class="stat-label">Total Files</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="stat-images">0</span>
+        <div class="stat-label">Images</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="stat-videos">0</span>
+        <div class="stat-label">Videos</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="stat-pages">0</span>
+        <div class="stat-label">Pages</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="stat-approved">0</span>
+        <div class="stat-label">Approved</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="stat-review">0</span>
+        <div class="stat-label">In Review</div>
+      </div>
+    </div>
+
+    <!-- Core Features -->
+    <div class="section-block">
+      <div class="section-header">
+        <h2>⚡ Core Features</h2>
+      </div>
+      <div class="feature-grid">
+        <a href="/upload.html" class="feature-card">
+          <span class="feature-icon">⬆️</span>
+          <h3>Media Upload System</h3>
+          <p>Upload images, videos, HTML pages, ZIP files, and documents. AI scans every file before publishing.</p>
+        </a>
+        <a href="/gallery/index.html" class="feature-card">
+          <span class="feature-icon">🖼️</span>
+          <h3>Gallery System</h3>
+          <p>Auto-generated galleries for recent images, videos, AI art, and project collections.</p>
+        </a>
+        <a href="/library/index.html" class="feature-card">
+          <span class="feature-icon">📚</span>
+          <h3>Asset Library</h3>
+          <p>Reusable media organised by category: fantasy, coins, Zelda, Mario, gemstones, and more.</p>
+        </a>
+        <a href="/builder.html" class="feature-card">
+          <span class="feature-icon">🤖</span>
+          <h3>AI Website Builder</h3>
+          <p>Generate complete websites from a single prompt. AI creates folders, HTML, and links gallery assets.</p>
+        </a>
+        <a href="/pages/" class="feature-card">
+          <span class="feature-icon">🌐</span>
+          <h3>HTML Page Hosting</h3>
+          <p>Upload full web pages served directly via GitHub Pages at <code>/pages/project_name/</code>.</p>
+        </a>
+        <a href="/upload.html#import" class="feature-card">
+          <span class="feature-icon">📥</span>
+          <h3>Import Engine</h3>
+          <p>Import assets from other Infinity repos, local uploads, or AI-generated content into <code>/library/imported</code>.</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- Recent Uploads -->
+    <div class="section-block">
+      <div class="section-header">
+        <h2>🕒 Recent Uploads</h2>
+        <a href="/gallery/index.html">View all →</a>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="meta-table">
+          <thead>
+            <tr>
+              <th>File ID</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="recent-uploads">
+            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">
+              No uploads yet — <a href="/upload.html" style="color:var(--accent-cyan)">upload media</a> to get started.
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Storage Structure -->
+    <div class="section-block">
+      <div class="section-header">
+        <h2>📁 Storage Structure</h2>
+      </div>
+      <div class="two-col">
+        <div>
+          <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1rem">Media is organised into these folders automatically based on file type:</p>
+          <table class="meta-table">
+            <thead><tr><th>Folder</th><th>Contents</th></tr></thead>
+            <tbody>
+              <tr><td>/media/images</td><td>JPG, PNG, GIF, WEBP</td></tr>
+              <tr><td>/media/videos</td><td>MP4, WebM</td></tr>
+              <tr><td>/media/uploads</td><td>ZIP, documents</td></tr>
+              <tr><td>/media/html</td><td>HTML files</td></tr>
+              <tr><td>/media/review_queue</td><td>Pending AI review</td></tr>
+              <tr><td>/pages/project_name/</td><td>Hosted web pages</td></tr>
+              <tr><td>/library</td><td>Reusable asset library</td></tr>
+              <tr><td>/library/imported</td><td>Imported repo assets</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1rem">Example file metadata record:</p>
+          <pre style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;font-size:0.8rem;color:var(--accent-green);overflow-x:auto">{
+  "file_id": "img_20260313_001",
+  "type": "image",
+  "title": "zelda_concept_art",
+  "category": "fantasy",
+  "tags": ["zelda","concept","art"],
+  "uploader": "wallet_id",
+  "folder": "/media/images",
+  "status": "approved",
+  "timestamp": "2026-03-13T00:00:00Z"
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hosted Pages -->
+    <div class="section-block">
+      <div class="section-header">
+        <h2>🌐 Hosted Pages</h2>
+        <a href="/pages/">Browse all →</a>
+      </div>
+      <div class="feature-grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
+        <a href="/pages/zelda_tribute/" class="feature-card">
+          <span class="feature-icon">🗡️</span>
+          <h3>Zelda Tribute</h3>
+          <p>Example AI-generated Zelda fan site built with the Infinity AI Website Builder.</p>
+        </a>
+        <a href="/builder.html" class="feature-card" style="border-style:dashed">
+          <span class="feature-icon">➕</span>
+          <h3>Add New Page</h3>
+          <p>Use the AI Builder or upload an HTML file to host a new page here.</p>
+        </a>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>∞ Infinity Media &amp; Page Hosting Engine &nbsp;|&nbsp;
+      <a href="/gallery/index.html">Gallery</a> &nbsp;·&nbsp;
+      <a href="/library/index.html">Library</a> &nbsp;·&nbsp;
+      <a href="/upload.html">Upload</a> &nbsp;·&nbsp;
+      <a href="/builder.html">AI Builder</a>
+    </p>
+  </footer>
+
+  <div id="toast"></div>
+  <script src="/js/infinity.js"></script>
+</body>
+</html>
