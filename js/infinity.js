@@ -5,6 +5,10 @@
 
 'use strict';
 
+/* ── Configuration ── */
+/** Repository identifier used for GitHub API calls — update if repo is renamed. */
+const GITHUB_REPO = 'www-infinity/Future-Now';
+
 /* ── Utility ── */
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
@@ -598,7 +602,7 @@ function generateSiteHTML(prompt, tmpl, slugName) {
     <div class="card">
       <span class="card-icon">📡</span>
       <h3>Live on GitHub Pages</h3>
-      <p>Served at <code>https://www-infinity.github.io/Future-Now/pages/${slugName}/</code> via GitHub Pages static hosting.</p>
+      <p>Served at <code>https://www-infinity.github.io/${GITHUB_REPO}/pages/${slugName}/</code> via GitHub Pages static hosting.</p>
     </div>
   </div>
 
@@ -621,12 +625,19 @@ function generateSiteHTML(prompt, tmpl, slugName) {
  * stored by the user in the builder's token field.
  * The token is kept only in the current browser session (sessionStorage).
  */
-async function commitPageViaAPI(slugName, html, token) {
-  const repo  = 'www-infinity/Future-Now';
-  const path  = `pages/${slugName}/index.html`;
-  const apiUrl = `https://api.github.com/repos/${repo}/contents/${path}`;
 
-  // Check if file already exists (need its SHA to update)
+/** UTF-8-safe base64 encoding for the GitHub Contents API. */
+function encodeBase64UTF8(str) {
+  return btoa(
+    Array.from(new TextEncoder().encode(str), b => String.fromCharCode(b)).join('')
+  );
+}
+
+async function commitPageViaAPI(slugName, html, token) {
+  const repoPath = `pages/${slugName}/index.html`;
+  const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${repoPath}`;
+
+  // Check if file already exists (need its SHA to update it)
   let sha = null;
   try {
     const existing = await fetch(apiUrl, {
@@ -636,11 +647,15 @@ async function commitPageViaAPI(slugName, html, token) {
       const data = await existing.json();
       sha = data.sha;
     }
-  } catch (_) { /* file doesn't exist yet — fine */ }
+    // A non-OK response (e.g. 404) simply means the file doesn't exist yet — that's expected.
+  } catch (networkErr) {
+    // Network error during the existence check — log and proceed without sha
+    console.warn('[infinity] GitHub API pre-flight check failed:', networkErr);
+  }
 
   const body = {
     message: `🤖 AI Builder: add page ${slugName}`,
-    content: btoa(unescape(encodeURIComponent(html))),
+    content: encodeBase64UTF8(html),
     ...(sha ? { sha } : {})
   };
 
