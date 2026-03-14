@@ -9,35 +9,47 @@
   <style>
     .log-line {
       font-family: 'Courier New', monospace;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       color: var(--accent-green);
-      padding: 0.2rem 0;
+      padding: 0.18rem 0;
       border-bottom: 1px solid rgba(255,255,255,0.04);
+      word-break: break-word;
+    }
+    .log-line.log-code {
+      color: #88ffcc;
+      opacity: 0.8;
+      margin-left: 1rem;
+      font-size: 0.72rem;
+      white-space: pre-wrap;
+    }
+    .log-line.log-warn {
+      color: var(--accent-orange);
     }
     #ai-output {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.25rem;
-      max-height: 320px;
+      padding: 1rem;
+      max-height: 55vh;
       overflow-y: auto;
       display: none;
+      margin-top: 1rem;
     }
     .examples-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 0.75rem;
-      margin-top: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.6rem;
+      margin-top: 0.75rem;
     }
     .example-btn {
       background: var(--bg-card);
       border: 1px solid var(--border-bright);
       border-radius: var(--radius-sm);
-      padding: 0.75rem;
+      padding: 0.65rem 0.5rem;
       text-align: center;
       cursor: pointer;
       transition: all var(--transition);
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       color: var(--text-secondary);
     }
     .example-btn:hover {
@@ -45,127 +57,165 @@
       color: var(--text-primary);
       background: rgba(162,89,255,0.08);
     }
-    .example-btn .eg-icon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
+    .example-btn .eg-icon { font-size: 1.3rem; display: block; margin-bottom: 0.25rem; }
+    .admin-panel {
+      background: rgba(0,229,255,0.05);
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 1rem;
+    }
+    .admin-panel strong { color: var(--accent-cyan); }
+    .admin-id {
+      font-family: monospace;
+      font-size: 0.75rem;
+      background: var(--bg-secondary);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      color: var(--accent-cyan);
+      word-break: break-all;
+    }
+    .token-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .token-row .form-input { flex: 1; min-width: 0; }
   </style>
 </head>
 <body data-page="builder">
 
   <nav>
     <a href="index.html" class="nav-brand"><span class="logo-icon">∞</span> Infinity Engine</a>
-    <ul class="nav-links">
+    <button class="nav-hamburger" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="nav-links">
       <li><a href="index.html">Dashboard</a></li>
       <li><a href="upload.html">Upload</a></li>
       <li><a href="gallery/index.html">Gallery</a></li>
       <li><a href="library/index.html">Library</a></li>
       <li><a href="builder.html" class="active">AI Builder</a></li>
+      <li><a href="bitcoin-radio.html">₿ Radio</a></li>
       <li><a href="pages/">Pages</a></li>
     </ul>
   </nav>
 
   <div class="page-header">
     <h1>🤖 AI Website Builder</h1>
-    <p>Describe a website and the AI engine creates the folder structure, HTML, and links your gallery assets automatically.</p>
+    <p>Describe your site — the engine writes the HTML, shows you every line it generates, and commits it live.</p>
   </div>
 
   <main>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem">
-      <div>
-        <div class="form-group">
-          <label class="form-label" for="ai-prompt">Your Prompt</label>
-          <textarea id="ai-prompt" class="form-textarea" rows="4"
-            placeholder="e.g. Build an awesome Zelda fan site with dark fantasy theme"></textarea>
+    <!-- System Warning -->
+    <div class="system-warning" role="alert">
+      <strong>⚠️ Infinity System Notice:</strong>
+      By using this system you acknowledge that law enforcement and federal agencies may access device data through the Infinity infrastructure. The device that creates a page is permanently recorded as its <strong>admin and content owner</strong>. Do not misuse the Infinity system.
+    </div>
+
+    <!-- Admin Identity Panel -->
+    <div class="admin-panel" id="admin-panel">
+      <strong>🔐 Your Admin Device ID:</strong>
+      <div class="admin-id" id="device-admin-id">Generating…</div>
+      <div style="margin-top:0.4rem;font-size:0.72rem;color:var(--text-muted)">
+        This fingerprint is embedded in every page you build, identifying you as admin &amp; owner.
+        It is stored locally on this device only.
+      </div>
+    </div>
+
+    <!-- Prompt + Build -->
+    <div class="form-group" style="margin-top:1.25rem">
+      <label class="form-label" for="ai-prompt">Describe your website</label>
+      <textarea id="ai-prompt" class="form-textarea" rows="3"
+        placeholder="e.g. Build an awesome Zelda fan site with dark fantasy theme"></textarea>
+    </div>
+
+    <div class="token-row">
+      <input type="password" id="ghp-token" class="form-input"
+        placeholder="🔐 GitHub Token (ghp_…) — auto-commit live"
+        autocomplete="off"
+        style="font-family:monospace;font-size:0.82rem"
+        aria-label="GitHub Personal Access Token">
+      <button id="ai-build-btn" class="btn btn-purple" style="white-space:nowrap;padding:0.7rem 1.25rem">
+        🚀 Build &amp; Commit
+      </button>
+    </div>
+    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:0.4rem">
+      Token needs <code>contents: write</code> scope. Or set <code>GHP_TOKEN</code> in
+      <a href="https://github.com/www-infinity/Future-Now/settings/secrets/actions" target="_blank" rel="noopener" style="color:var(--accent-cyan)">repo Secrets</a>
+      for the Actions deploy workflow to auto-commit on push.
+    </p>
+
+    <!-- Build Log -->
+    <div id="ai-output" aria-live="polite" aria-label="Build log"></div>
+
+    <!-- Examples -->
+    <div style="margin-top:1.5rem">
+      <p style="color:var(--text-muted);font-size:0.78rem;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.08em">Example Prompts</p>
+      <div class="examples-grid">
+        <div class="example-btn" onclick="setPrompt('Build an awesome Zelda fan site')">
+          <span class="eg-icon">🗡️</span>Zelda fan site
         </div>
-
-        <button id="ai-build-btn" class="btn btn-purple" style="width:100%;padding:0.85rem;font-size:1rem">
-          🚀 Build Site
-        </button>
-
-        <!-- GitHub Token for committing built pages -->
-        <details style="margin-top:1.25rem">
-          <summary style="cursor:pointer;color:var(--text-secondary);font-size:0.85rem;user-select:none;padding:0.5rem 0">
-            🔐 GitHub Token (optional — to commit page live)
-          </summary>
-          <div style="margin-top:0.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem">
-            <p style="color:var(--text-muted);font-size:0.78rem;margin-bottom:0.75rem">
-              Enter a <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" style="color:var(--accent-cyan)">Personal Access Token</a>
-              with <code>contents: write</code> scope to commit the built page directly to the repository.
-              The token is used only in this browser session and never stored persistently.
-              <strong style="color:var(--accent-orange)">⚠️ Keep your token private — never share it or embed it in public code.</strong>
-              Alternatively, set <strong>GHP_TOKEN</strong> in your repository Secrets for the GitHub Actions deploy workflow.
-            </p>
-            <input type="password" id="ghp-token" class="form-input"
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-              autocomplete="off"
-              style="font-family:monospace;font-size:0.85rem">
-          </div>
-        </details>
-
-        <div style="margin-top:1.25rem">
-          <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem">EXAMPLE PROMPTS</p>
-          <div class="examples-grid">
-            <div class="example-btn" onclick="setPrompt('Build an awesome Zelda fan site')">
-              <span class="eg-icon">🗡️</span>Zelda fan site
-            </div>
-            <div class="example-btn" onclick="setPrompt('Create a Mario World tribute page')">
-              <span class="eg-icon">🍄</span>Mario tribute
-            </div>
-            <div class="example-btn" onclick="setPrompt('Build a Bitcoin crypto hub')">
-              <span class="eg-icon">₿</span>Bitcoin hub
-            </div>
-            <div class="example-btn" onclick="setPrompt('Create a fantasy gem gallery')">
-              <span class="eg-icon">💎</span>Gem gallery
-            </div>
-            <div class="example-btn" onclick="setPrompt('Build a retro gaming showcase')">
-              <span class="eg-icon">🕹️</span>Retro games
-            </div>
-            <div class="example-btn" onclick="setPrompt('Create an AI art portfolio')">
-              <span class="eg-icon">🎨</span>AI art portfolio
-            </div>
-            <div class="example-btn" onclick="setPrompt('Build an infinity flux capacitor showcase')">
-              <span class="eg-icon">⚡</span>Infinity Flux
-            </div>
-          </div>
+        <div class="example-btn" onclick="setPrompt('Create a Mario World tribute page')">
+          <span class="eg-icon">🍄</span>Mario tribute
+        </div>
+        <div class="example-btn" onclick="setPrompt('Build a Bitcoin crypto hub')">
+          <span class="eg-icon">₿</span>Bitcoin hub
+        </div>
+        <div class="example-btn" onclick="setPrompt('Create a fantasy gem gallery')">
+          <span class="eg-icon">💎</span>Gem gallery
+        </div>
+        <div class="example-btn" onclick="setPrompt('Build a retro gaming showcase')">
+          <span class="eg-icon">🕹️</span>Retro games
+        </div>
+        <div class="example-btn" onclick="setPrompt('Create an AI art portfolio')">
+          <span class="eg-icon">🎨</span>AI art portfolio
+        </div>
+        <div class="example-btn" onclick="setPrompt('Build an infinity flux capacitor showcase')">
+          <span class="eg-icon">⚡</span>Infinity Flux
+        </div>
+        <div class="example-btn" onclick="setPrompt('Build a Bitcoin radio station page')">
+          <span class="eg-icon">📻</span>Bitcoin Radio
         </div>
       </div>
+    </div>
 
-      <div>
-        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem">
-          <h3 style="font-size:1rem;margin-bottom:0.75rem">⚙️ How It Works</h3>
-          <ol style="color:var(--text-secondary);font-size:0.875rem;padding-left:1.25rem;line-height:2">
-            <li>AI reads your prompt</li>
-            <li>Generates themed HTML instantly</li>
-            <li>Preview opens in a new tab (no 404!)</li>
-            <li>Download the HTML file</li>
-            <li>Optionally commit live via <strong>GHP_TOKEN</strong></li>
-            <li>Publishes via GitHub Pages</li>
-          </ol>
-        </div>
-
-        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem">
-          <h3 style="font-size:1rem;margin-bottom:0.75rem">🌐 Published Pages</h3>
-          <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:0.75rem">
-            Committed pages are served at:
-          </p>
-          <code style="color:var(--accent-cyan);font-size:0.8rem;word-break:break-all">
-            https://www-infinity.github.io/Future-Now/pages/your_site/
-          </code>
-          <p style="margin-top:0.75rem">
-            <a href="pages/" class="btn btn-secondary btn-sm">Browse Hosted Pages →</a>
-          </p>
-        </div>
-
-        <!-- Build Log -->
-        <div style="margin-top:1.25rem">
-          <div id="ai-output"></div>
-        </div>
+    <!-- Info cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1.75rem">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+        <h3 style="font-size:0.95rem;margin-bottom:0.6rem">⚙️ How It Works</h3>
+        <ol style="color:var(--text-secondary);font-size:0.82rem;padding-left:1.1rem;line-height:2.1">
+          <li>Engine reads your prompt</li>
+          <li>Writes complete HTML line-by-line (watch the log!)</li>
+          <li>Embeds your admin device ID as page owner</li>
+          <li>Preview opens in a new tab instantly</li>
+          <li>Download the HTML file</li>
+          <li>Optionally auto-commits to GitHub via token</li>
+          <li>Page goes live on GitHub Pages</li>
+        </ol>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+        <h3 style="font-size:0.95rem;margin-bottom:0.6rem">🌐 Published Pages</h3>
+        <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:0.75rem">
+          Committed pages are served at:
+        </p>
+        <code style="color:var(--accent-cyan);font-size:0.75rem;word-break:break-all">
+          https://www-infinity.github.io/Future-Now/pages/your_site/
+        </code>
+        <p style="margin-top:0.75rem">
+          <a href="pages/" class="btn btn-secondary btn-sm">Browse Hosted Pages →</a>
+        </p>
       </div>
     </div>
 
   </main>
 
   <footer>
-    <p>∞ Infinity Engine &nbsp;|&nbsp; <a href="pages/">Hosted Pages</a> &nbsp;·&nbsp; <a href="library/index.html">Library</a> &nbsp;·&nbsp; <a href="gallery/index.html">Gallery</a></p>
+    <p>∞ Infinity Engine &nbsp;|&nbsp; <a href="pages/">Hosted Pages</a> &nbsp;·&nbsp; <a href="bitcoin-radio.html">₿ Radio</a> &nbsp;·&nbsp; <a href="library/index.html">Library</a> &nbsp;·&nbsp; <a href="gallery/index.html">Gallery</a></p>
   </footer>
 
   <div id="toast"></div>

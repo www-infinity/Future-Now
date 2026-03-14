@@ -524,18 +524,63 @@ function initLibraryPage() {
   render();
 }
 
+/* ── Device Admin Fingerprint ── */
+/**
+ * Returns a stable, session-persistent device fingerprint used as the
+ * admin/owner ID for pages built on this device. Stored in localStorage.
+ */
+function getDeviceAdminId() {
+  const ADMIN_KEY = 'infinity_admin_id';
+  let id = localStorage.getItem(ADMIN_KEY);
+  if (!id) {
+    const parts = [
+      navigator.userAgent.length.toString(16),
+      screen.width.toString(16),
+      screen.height.toString(16),
+      (navigator.hardwareConcurrency || 2).toString(16),
+      Date.now().toString(36),
+      Math.random().toString(36).slice(2, 8)
+    ];
+    id = '∞-' + parts.join('-').toUpperCase().slice(0, 36);
+    localStorage.setItem(ADMIN_KEY, id);
+  }
+  return id;
+}
+
+/* ── Hamburger Nav Toggle ── */
+function initHamburgerNav() {
+  const toggle = document.getElementById('nav-toggle');
+  const links  = document.getElementById('nav-links');
+  if (!toggle || !links) return;
+  toggle.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    toggle.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  });
+  // Close menu on link click
+  links.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      links.classList.remove('open');
+      toggle.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+}
+
 /* ── AI Site Builder ── */
 
 /**
  * Generate full themed HTML for a built page.
  * Returns an HTML string ready to be displayed or committed.
  */
-function generateSiteHTML(prompt, tmpl, slugName) {
+function generateSiteHTML(prompt, tmpl, slugName, adminId) {
   const safeTitle = prompt.replace(/</g, '&lt;').replace(/>/g, '&gt;').slice(0, 80);
   const accent   = tmpl.accent;
   const accentDim = accent + 'bb';
   const theme    = tmpl.theme;
   const desc     = tmpl.desc;
+  const builtAt  = new Date().toUTCString();
+  const safeAdmin = (adminId || 'unknown').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -544,30 +589,36 @@ function generateSiteHTML(prompt, tmpl, slugName) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${safeTitle} — Infinity Pages</title>
   <meta name="description" content="${desc.replace(/"/g, '&quot;')}">
+  <meta name="generator" content="Infinity AI Website Builder">
+  <meta name="infinity:admin" content="${safeAdmin}">
   <style>
     :root { --accent: ${accent}; --accent-dim: ${accentDim}; }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{background:#04040e;color:#e8e8ff;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
-    nav{background:rgba(3,3,18,.96);border-bottom:1px solid rgba(0,229,255,.18);padding:.75rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);}
-    .brand{color:var(--accent);font-weight:800;font-size:1.2rem;text-decoration:none;}
-    .back{color:#8888aa;text-decoration:none;font-size:.85rem;border:1px solid #22225a;padding:.3rem .7rem;border-radius:6px;transition:.2s;}
+    nav{background:rgba(3,3,18,.96);border-bottom:1px solid rgba(0,229,255,.18);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);}
+    .brand{color:var(--accent);font-weight:800;font-size:1.1rem;text-decoration:none;}
+    .back{color:#8888aa;text-decoration:none;font-size:.82rem;border:1px solid #22225a;padding:.3rem .7rem;border-radius:6px;transition:.2s;}
     .back:hover{color:var(--accent);border-color:var(--accent);}
-    .hero{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4rem 2rem;background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(0,229,255,.07) 0%,transparent 60%);}
-    .hero-icon{font-size:5rem;margin-bottom:1.5rem;filter:drop-shadow(0 0 20px var(--accent));}
-    .hero h1{font-size:clamp(2.2rem,6vw,4rem);font-weight:900;color:var(--accent);text-shadow:0 0 40px ${accent}66;margin-bottom:1rem;letter-spacing:.02em;line-height:1.1;}
-    .hero p{color:#8888aa;font-size:1.1rem;max-width:540px;margin:0 auto 2.5rem;font-style:italic;}
-    .badge-built{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem 1rem;border:1px solid ${accent}55;border-radius:999px;color:${accent}aa;font-size:.8rem;background:${accent}0f;}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;max-width:1100px;margin:0 auto;padding:4rem 2rem;}
-    .card{background:#0d0d24;border:1px solid #14143a;border-radius:12px;padding:1.75rem;transition:.2s;position:relative;overflow:hidden;}
+    .warning-bar{background:rgba(255,68,85,.08);border-bottom:1px solid rgba(255,68,85,.25);padding:.6rem 1.5rem;font-size:.75rem;color:#ff8899;text-align:center;}
+    .warning-bar strong{color:#ff4455;}
+    .hero{min-height:65vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3rem 1.5rem;background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(0,229,255,.07) 0%,transparent 60%);}
+    .hero-icon{font-size:4.5rem;margin-bottom:1.25rem;filter:drop-shadow(0 0 20px var(--accent));}
+    .hero h1{font-size:clamp(1.8rem,6vw,3.5rem);font-weight:900;color:var(--accent);text-shadow:0 0 40px ${accent}66;margin-bottom:.85rem;line-height:1.1;}
+    .hero p{color:#8888aa;font-size:1rem;max-width:520px;margin:0 auto 2rem;font-style:italic;}
+    .badge-built{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem 1rem;border:1px solid ${accent}55;border-radius:999px;color:${accent}aa;font-size:.78rem;background:${accent}0f;margin-bottom:.5rem;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.25rem;max-width:1100px;margin:0 auto;padding:3rem 1.5rem;}
+    .card{background:#0d0d24;border:1px solid #14143a;border-radius:12px;padding:1.5rem;transition:.2s;position:relative;overflow:hidden;}
     .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,${accent}55,transparent);opacity:0;transition:.2s;}
     .card:hover{border-color:${accent}66;transform:translateY(-3px);box-shadow:0 8px 30px ${accent}18;}
     .card:hover::before{opacity:1;}
-    .card-icon{font-size:2.5rem;margin-bottom:.75rem;display:block;}
-    .card h3{color:var(--accent);font-size:1.05rem;margin-bottom:.5rem;}
-    .card p{color:#8888aa;font-size:.875rem;line-height:1.6;}
-    footer{background:#06060f;border-top:1px solid #14143a;padding:2rem;text-align:center;color:#4a4a6a;font-size:.8rem;margin-top:4rem;}
+    .card-icon{font-size:2.25rem;margin-bottom:.65rem;display:block;}
+    .card h3{color:var(--accent);font-size:1rem;margin-bottom:.4rem;}
+    .card p{color:#8888aa;font-size:.85rem;line-height:1.6;}
+    .admin-info{background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:8px;padding:.75rem 1rem;font-size:.72rem;color:#6699aa;margin-top:.5rem;word-break:break-all;}
+    footer{background:#06060f;border-top:1px solid #14143a;padding:1.75rem;text-align:center;color:#4a4a6a;font-size:.78rem;margin-top:3rem;}
     footer a{color:#8888aa;text-decoration:none;}
     footer a:hover{color:var(--accent);}
+    @media(max-width:600px){.grid{padding:1.5rem 1rem;}.hero{padding:2.5rem 1rem;}}
   </style>
 </head>
 <body>
@@ -576,11 +627,20 @@ function generateSiteHTML(prompt, tmpl, slugName) {
     <a href="../../pages/" class="back">← All Pages</a>
   </nav>
 
+  <div class="warning-bar" role="alert">
+    <strong>⚠️ Infinity System Notice:</strong>
+    Law enforcement &amp; federal agencies may access device data through the Infinity infrastructure.
+    The admin &amp; content owner of this page is permanently recorded.
+  </div>
+
   <section class="hero">
-    <div class="hero-icon">⚡</div>
+    <div class="hero-icon">${tmpl.icon || '⚡'}</div>
     <h1>${safeTitle}</h1>
     <p>${desc}</p>
     <div class="badge-built">🤖 Generated by Infinity AI Website Builder</div>
+    <div class="badge-built" style="margin-top:.3rem;font-size:.72rem;opacity:.7">
+      🔐 Admin ID: ${safeAdmin}
+    </div>
   </section>
 
   <div class="grid">
@@ -592,7 +652,7 @@ function generateSiteHTML(prompt, tmpl, slugName) {
     <div class="card">
       <span class="card-icon">🖼️</span>
       <h3>Media Library</h3>
-      <p>Assets for this page are sourced from the Infinity shared media library at <code>/library</code> and <code>/media/images</code>.</p>
+      <p>Assets sourced from the Infinity shared media library at <code>/library</code> and <code>/media/images</code>. Upload media to enrich this page.</p>
     </div>
     <div class="card">
       <span class="card-icon">⚙️</span>
@@ -604,6 +664,17 @@ function generateSiteHTML(prompt, tmpl, slugName) {
       <h3>Live on GitHub Pages</h3>
       <p>Served at <code>https://www-infinity.github.io/${GITHUB_REPO}/pages/${slugName}/</code> via GitHub Pages static hosting.</p>
     </div>
+    <div class="card">
+      <span class="card-icon">🔐</span>
+      <h3>Admin &amp; Ownership</h3>
+      <p>The device that created this page is its admin and content owner. This is tracked by the Infinity system.</p>
+      <div class="admin-info">Admin Device ID: <strong>${safeAdmin}</strong><br>Built: ${builtAt}</div>
+    </div>
+    <div class="card">
+      <span class="card-icon">₿</span>
+      <h3>Bitcoin Radio</h3>
+      <p>Tune into the Infinity Bitcoin Radio — blockchain-powered channel selection. <a href="../../bitcoin-radio.html" style="color:var(--accent)">Open Radio →</a></p>
+    </div>
   </div>
 
   <footer>
@@ -613,7 +684,7 @@ function generateSiteHTML(prompt, tmpl, slugName) {
       &nbsp;·&nbsp; <a href="../../pages/">All Pages</a>
       &nbsp;·&nbsp; <a href="../../index.html">∞ Infinity Engine</a>
     </p>
-    <p style="margin-top:.4rem;font-size:.72rem;opacity:.5">Generated ${new Date().toUTCString()}</p>
+    <p style="margin-top:.4rem;font-size:.7rem;opacity:.5">Generated ${builtAt} &nbsp;·&nbsp; Admin: ${safeAdmin}</p>
   </footer>
 </body>
 </html>`;
@@ -678,13 +749,50 @@ function initAIBuilder() {
   const output = $('#ai-output');
   if (!buildBtn) return;
 
+  // Show admin device ID in panel
+  const adminIdEl = document.getElementById('device-admin-id');
+  const adminId = getDeviceAdminId();
+  if (adminIdEl) adminIdEl.textContent = adminId;
+
   const TEMPLATES = {
-    zelda:   { name: 'zelda_tribute',  theme: 'Zelda Fan Site',   accent: '#ffd700', desc: 'A legendary tribute to The Legend of Zelda universe.' },
-    mario:   { name: 'mario_world',    theme: 'Mario World',      accent: '#ff4444', desc: 'Jump into the Mushroom Kingdom.' },
-    bitcoin: { name: 'bitcoin_hub',    theme: 'Bitcoin Hub',      accent: '#f7931a', desc: 'Explore the world of Bitcoin and crypto.' },
-    infinity:{ name: 'infinity_flux',  theme: 'Infinity Flux',    accent: '#00e5ff', desc: 'A Flux Capacitor-powered Infinity Engine showcase.' },
-    default: { name: 'new_site',       theme: 'New Project',      accent: '#a259ff', desc: 'A fresh Infinity-powered web page.' }
+    zelda:   { name: 'zelda_tribute',  theme: 'Zelda Fan Site',   accent: '#ffd700', icon: '🗡️', desc: 'A legendary tribute to The Legend of Zelda universe.' },
+    mario:   { name: 'mario_world',    theme: 'Mario World',      accent: '#ff4444', icon: '🍄', desc: 'Jump into the Mushroom Kingdom.' },
+    bitcoin: { name: 'bitcoin_hub',    theme: 'Bitcoin Hub',      accent: '#f7931a', icon: '₿',  desc: 'Explore the world of Bitcoin and crypto.' },
+    radio:   { name: 'bitcoin_radio',  theme: 'Bitcoin Radio',    accent: '#a259ff', icon: '📻', desc: 'Blockchain-powered virtual radio channel selector.' },
+    infinity:{ name: 'infinity_flux',  theme: 'Infinity Flux',    accent: '#00e5ff', icon: '⚡', desc: 'A Flux Capacitor-powered Infinity Engine showcase.' },
+    default: { name: 'new_site',       theme: 'New Project',      accent: '#a259ff', icon: '🌐', desc: 'A fresh Infinity-powered web page.' }
   };
+
+  /**
+   * Append a log line to the build output panel.
+   * type: 'step' | 'code' | 'warn'
+   */
+  function logLine(text, type = 'step') {
+    const p = document.createElement('p');
+    p.className = 'log-line' + (type === 'code' ? ' log-code' : type === 'warn' ? ' log-warn' : '');
+    p.textContent = text;
+    output.appendChild(p);
+    output.scrollTop = output.scrollHeight;
+    return p;
+  }
+
+  /**
+   * Emits a sequence of code lines from the HTML string to the log,
+   * one line at a time with a small delay to show the engine "writing".
+   */
+  async function streamCodeToLog(html) {
+    const lines = html.split('\n');
+    const MAX_LINES = 60; // show first 60 lines
+    const step = Math.max(1, Math.floor(lines.length / MAX_LINES));
+    for (let i = 0; i < lines.length && i < MAX_LINES * step; i += step) {
+      logLine(lines[i] || '', 'code');
+      // Small async pause every 8 lines so UI doesn't freeze
+      if (i % 8 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+    if (lines.length > MAX_LINES * step) {
+      logLine(`  … (${lines.length} total lines) …`, 'code');
+    }
+  }
 
   buildBtn.addEventListener('click', async () => {
     const prompt = (promptInput.value || '').trim().toLowerCase();
@@ -693,43 +801,53 @@ function initAIBuilder() {
     buildBtn.disabled = true;
     buildBtn.textContent = '⚙️ Building…';
     output.style.display = 'block';
-    output.innerHTML = '<p class="log-line">🤖 AI Engine starting…</p>';
+    output.innerHTML = '';
 
-    const tmplKey = Object.keys(TEMPLATES).find(k => prompt.includes(k)) || 'default';
+    const tmplKey = Object.keys(TEMPLATES).find(k => k !== 'default' && prompt.includes(k)) || 'default';
     const tmpl = TEMPLATES[tmplKey];
     const slugName = prompt.replace(/[^a-z0-9]+/g, '_').slice(0, 30);
     const pagePath = `pages/${slugName}/`;
 
-    const steps = [
-      '📁 Creating page folder: ' + pagePath,
-      '🎨 Generating HTML structure with ' + tmpl.theme + ' theme…',
-      '🖼️  Linking gallery assets from /library…',
-      '✨ Applying Infinity Flux Capacitor visuals…',
-      '🔗 Injecting asset references…',
-      '📝 Writing index.html…',
-      '✅ Page ready!'
-    ];
+    logLine('🤖 Infinity AI Engine initialising…');
+    await new Promise(r => setTimeout(r, 180));
 
-    // Step log animation
-    await new Promise(resolve => {
-      let i = 0;
-      const interval = setInterval(() => {
-        if (i < steps.length) {
-          const line = document.createElement('p');
-          line.className = 'log-line';
-          line.textContent = steps[i];
-          output.appendChild(line);
-          output.scrollTop = output.scrollHeight;
-          i++;
-        } else {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 380);
-    });
+    logLine(`📁 Creating folder: ${pagePath}`);
+    await new Promise(r => setTimeout(r, 220));
+
+    logLine(`🎨 Applying theme: ${tmpl.theme} (accent ${tmpl.accent})`);
+    await new Promise(r => setTimeout(r, 200));
+
+    logLine('📝 Writing <!DOCTYPE html> …');
+    await new Promise(r => setTimeout(r, 160));
+
+    logLine('🖼️  Linking gallery assets from /library and /media/images…');
+    await new Promise(r => setTimeout(r, 200));
+
+    logLine(`🔐 Embedding admin device ID: ${adminId}`);
+    await new Promise(r => setTimeout(r, 200));
+
+    logLine('✨ Applying Infinity Flux Capacitor visuals…');
+    await new Promise(r => setTimeout(r, 200));
+
+    logLine('⚙️ Writing CSS — layout, cards, hero, responsive…');
+    await new Promise(r => setTimeout(r, 200));
+
+    logLine('📡 Injecting GitHub Pages live URL…');
+    await new Promise(r => setTimeout(r, 200));
 
     // Generate the actual HTML content
-    const html = generateSiteHTML(prompt, tmpl, slugName);
+    const html = generateSiteHTML(prompt, tmpl, slugName, adminId);
+
+    logLine('─────────────────────────────────────');
+    logLine('📄 Generated HTML source (showing all lines written):');
+    await new Promise(r => setTimeout(r, 100));
+
+    // Stream actual code to log
+    await streamCodeToLog(html);
+
+    logLine('─────────────────────────────────────');
+    logLine(`✅ index.html complete — ${html.length.toLocaleString()} bytes, ${html.split('\n').length} lines`);
+
     const blob = new Blob([html], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
 
@@ -741,7 +859,7 @@ function initAIBuilder() {
       file_name: 'index.html',
       category: 'AI Generated',
       tags: ['ai-built', 'page'],
-      uploader: 'ai_engine',
+      uploader: adminId,
       folder: pagePath,
       status: 'approved',
       timestamp: new Date().toISOString(),
@@ -749,9 +867,9 @@ function initAIBuilder() {
     });
 
     buildBtn.disabled = false;
-    buildBtn.textContent = '🚀 Build Site';
+    buildBtn.textContent = '🚀 Build & Commit';
 
-    // "View Page" — opens generated HTML in new tab (no 404!)
+    // "Preview Page" — opens generated HTML in new tab (no 404!)
     const viewLink = document.createElement('a');
     viewLink.href = blobUrl;
     viewLink.target = '_blank';
@@ -774,10 +892,7 @@ function initAIBuilder() {
     const tokenInput = document.getElementById('ghp-token');
     const token = tokenInput ? tokenInput.value.trim() : '';
     if (token) {
-      const statusLine = document.createElement('p');
-      statusLine.className = 'log-line';
-      statusLine.textContent = '🔐 Committing to GitHub…';
-      output.appendChild(statusLine);
+      const statusLine = logLine('🔐 Committing to GitHub via GHP_TOKEN…');
 
       try {
         const res = await commitPageViaAPI(slugName, html, token);
@@ -797,15 +912,141 @@ function initAIBuilder() {
           statusLine.textContent = `⚠️ GitHub commit failed: ${err.message || res.status}. Check your token.`;
         }
       } catch (e) {
-        const statusLine2 = document.createElement('p');
-        statusLine2.className = 'log-line';
-        statusLine2.textContent = `⚠️ Could not reach GitHub API: ${e.message}`;
-        output.appendChild(statusLine2);
+        logLine(`⚠️ Could not reach GitHub API: ${e.message}`, 'warn');
       }
+    } else {
+      logLine('ℹ️  No token provided — page not committed. Enter a GHP token above to auto-commit.', 'warn');
     }
 
     showToast('🚀 Site built: ' + pagePath);
   });
+}
+
+/* ── Bitcoin Radio ── */
+
+/**
+ * Uses the latest Bitcoin block hash as deterministic entropy to select
+ * a virtual radio channel from the 16-channel wheel.
+ * Falls back to a local PRNG seed if the blockchain API is unreachable.
+ */
+const RADIO_CHANNELS = [
+  { icon: '🎷', name: 'Jazz',          desc: 'Smooth jazz & soul from the blockchain' },
+  { icon: '🎨', name: 'Masterpiece',   desc: 'Classical & orchestral compositions' },
+  { icon: '🍄', name: 'Police Scanner',desc: 'Public safety chatter (simulated)' },
+  { icon: '😎', name: 'Cool',          desc: 'Laid-back beats & chill vibes' },
+  { icon: '🛸', name: 'Alien',         desc: 'Electroacoustic & otherworldly soundscapes' },
+  { icon: '👌', name: 'Top Notch',     desc: 'Curated premium audio streams' },
+  { icon: '⭐', name: 'Trendy',        desc: 'What\'s hot right now in the metaverse' },
+  { icon: '💃', name: 'Dance',         desc: 'High-BPM electronic & EDM' },
+  { icon: '♥️', name: 'Love',          desc: 'R&B, soul & romantic vibes' },
+  { icon: '🧱', name: 'Military Comms',desc: 'Simulated tactical chatter & field ops' },
+  { icon: '🟨', name: 'News',          desc: 'Live headlines & breaking developments' },
+  { icon: '🟦', name: 'Conversation',  desc: 'Ham radio & conversation channels' },
+  { icon: '🟥', name: 'Shortwave',     desc: 'Shortwave & international broadcasts' },
+  { icon: '🟪', name: 'FM',            desc: 'Classic FM station simulation' },
+  { icon: '🟩', name: 'AM',            desc: 'Amplitude modulation & talk radio' },
+  { icon: '⬜', name: 'Digital Live',  desc: 'Real-time Bitcoin transaction sonification' }
+];
+
+async function fetchBitcoinSeed() {
+  try {
+    const res = await fetch('https://blockchain.info/latestblock', {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined
+    });
+    if (!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    return { hash: data.hash || '', height: data.height || 0, source: 'blockchain' };
+  } catch {
+    // Fallback: use current time + random as seed string
+    const fallback = Date.now().toString(16) + Math.random().toString(16).slice(2);
+    return { hash: fallback, height: 0, source: 'local-prng' };
+  }
+}
+
+function hashToChannelIndex(hash) {
+  // Sum all hex character values then mod by channel count
+  let total = 0;
+  for (let i = 0; i < hash.length; i++) {
+    total += parseInt(hash[i], 16) || 0;
+  }
+  return total % RADIO_CHANNELS.length;
+}
+
+function initBitcoinRadio() {
+  const display    = document.getElementById('slot-display');
+  const chanName   = document.getElementById('slot-channel-name');
+  const chanDesc   = document.getElementById('slot-channel-desc');
+  const seedEl     = document.getElementById('slot-seed');
+  const spinBtn    = document.getElementById('spin-btn');
+  const statusEl   = document.getElementById('radio-status');
+  const channelBtns = document.querySelectorAll('.radio-channel-btn');
+  if (!spinBtn || !display) return;
+
+  let spinning = false;
+
+  function setChannel(idx) {
+    const ch = RADIO_CHANNELS[idx];
+    if (display)  display.textContent  = ch.icon;
+    if (chanName) chanName.textContent = ch.name;
+    if (chanDesc) chanDesc.textContent = ch.desc;
+    channelBtns.forEach((b, i) => b.classList.toggle('active', i === idx));
+  }
+
+  // Manual channel click
+  channelBtns.forEach((btn, i) => {
+    btn.addEventListener('click', () => {
+      if (!spinning) setChannel(i);
+    });
+  });
+
+  async function spin() {
+    if (spinning) return;
+    spinning = true;
+    spinBtn.disabled = true;
+    spinBtn.textContent = '⏳ Fetching block…';
+    if (statusEl) statusEl.textContent = '📡 Connecting to Bitcoin blockchain…';
+
+    // Animate slot machine
+    if (display) display.classList.add('spinning');
+    let frame = 0;
+    const spinInterval = setInterval(() => {
+      const rndIdx = Math.floor(Math.random() * RADIO_CHANNELS.length);
+      if (display)  display.textContent  = RADIO_CHANNELS[rndIdx].icon;
+      if (chanName) chanName.textContent = RADIO_CHANNELS[rndIdx].name;
+      frame++;
+    }, 80);
+
+    const seed = await fetchBitcoinSeed();
+    const idx  = hashToChannelIndex(seed.hash);
+
+    // Let it spin a bit longer
+    await new Promise(r => setTimeout(r, 900));
+    clearInterval(spinInterval);
+    if (display) display.classList.remove('spinning');
+
+    setChannel(idx);
+
+    if (seedEl) {
+      seedEl.textContent = seed.source === 'blockchain'
+        ? `₿ Block hash: ${seed.hash.slice(0, 24)}… (height ${seed.height})`
+        : `⚡ Local entropy seed: ${seed.hash.slice(0, 24)}…`;
+    }
+    if (statusEl) {
+      statusEl.textContent = seed.source === 'blockchain'
+        ? `✅ Channel selected by Bitcoin block #${seed.height}`
+        : '⚡ Channel selected by local entropy (blockchain unreachable)';
+    }
+
+    spinning = false;
+    spinBtn.disabled = false;
+    spinBtn.textContent = '🎰 Spin';
+  }
+
+  spinBtn.addEventListener('click', spin);
+
+  // Auto-spin on page load
+  spin();
 }
 
 /* ── Dashboard Stats ── */
@@ -841,6 +1082,9 @@ function initDashboard() {
 
 /* ── Auto-init ── */
 document.addEventListener('DOMContentLoaded', () => {
+  // Hamburger nav
+  initHamburgerNav();
+
   // Set active nav link
   const current = window.location.pathname.split('/').filter(Boolean)[0] || '';
   $$('nav a').forEach(a => {
@@ -855,4 +1099,5 @@ document.addEventListener('DOMContentLoaded', () => {
   if (body === 'gallery') initGalleryPage(document.body.dataset.filter || 'all');
   if (body === 'library') initLibraryPage();
   if (body === 'builder') initAIBuilder();
+  if (body === 'bitcoin-radio') initBitcoinRadio();
 });

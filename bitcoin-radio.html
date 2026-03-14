@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>₿ Bitcoin Radio — Infinity Engine</title>
+  <meta name="description" content="Bitcoin blockchain-powered virtual radio. The latest block hash selects your channel from 16 curated streams.">
+  <link rel="stylesheet" href="css/infinity.css">
+</head>
+<body data-page="bitcoin-radio">
+
+  <nav>
+    <a href="index.html" class="nav-brand"><span class="logo-icon">∞</span> Infinity Engine</a>
+    <button class="nav-hamburger" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="index.html">Dashboard</a></li>
+      <li><a href="upload.html">Upload</a></li>
+      <li><a href="gallery/index.html">Gallery</a></li>
+      <li><a href="library/index.html">Library</a></li>
+      <li><a href="builder.html">AI Builder</a></li>
+      <li><a href="bitcoin-radio.html" class="active">₿ Radio</a></li>
+      <li><a href="pages/">Pages</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <h1>₿ Bitcoin Radio</h1>
+    <p>The latest Bitcoin block hash selects your channel. Every block is a new spin of the dial.</p>
+  </div>
+
+  <main>
+
+    <!-- How it works -->
+    <div class="system-warning" role="note" style="background:rgba(247,147,26,.07);border-color:rgba(247,147,26,.3);color:#ffb84d">
+      <strong>⚙️ Bitcoin Crusher Engine:</strong>
+      Fetches the latest block hash from <code>blockchain.info</code>, sums the hex digits, and uses
+      <code>hash % 16</code> to deterministically land on one of 16 channels. Same block = same channel worldwide.
+    </div>
+
+    <!-- Slot Machine -->
+    <div class="radio-dial">
+      <div class="slot-machine" aria-live="polite" aria-label="Radio channel selector">
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.1em">
+          ₿ Bitcoin Crusher — Channel Select
+        </div>
+        <div class="slot-display" id="slot-display" role="img" aria-label="Selected channel icon">🎰</div>
+        <div class="slot-channel-name" id="slot-channel-name">Loading…</div>
+        <div style="font-size:0.82rem;color:var(--text-secondary);min-height:1.4em;margin-bottom:0.75rem" id="slot-channel-desc"></div>
+        <button id="spin-btn" class="btn btn-purple" style="width:100%;padding:0.75rem;font-size:1rem" aria-label="Spin to get new channel">
+          🎰 Spin
+        </button>
+        <div style="font-size:0.75rem;color:var(--accent-green);margin-top:0.6rem;min-height:1.3em" id="radio-status"></div>
+        <div class="slot-seed" id="slot-seed"></div>
+      </div>
+    </div>
+
+    <!-- Channel Grid -->
+    <div style="margin-top:1.5rem">
+      <p style="color:var(--text-muted);font-size:0.78rem;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.08em">
+        All 16 Channels — click any to tune in
+      </p>
+      <div class="radio-channels-grid">
+        <button class="radio-channel-btn" data-idx="0" aria-label="Jazz channel">
+          <span class="ch-icon">🎷</span>Jazz
+        </button>
+        <button class="radio-channel-btn" data-idx="1" aria-label="Masterpiece channel">
+          <span class="ch-icon">🎨</span>Masterpiece
+        </button>
+        <button class="radio-channel-btn" data-idx="2" aria-label="Police Scanner channel">
+          <span class="ch-icon">🍄</span>Police Scanner
+        </button>
+        <button class="radio-channel-btn" data-idx="3" aria-label="Cool channel">
+          <span class="ch-icon">😎</span>Cool
+        </button>
+        <button class="radio-channel-btn" data-idx="4" aria-label="Alien channel">
+          <span class="ch-icon">🛸</span>Alien
+        </button>
+        <button class="radio-channel-btn" data-idx="5" aria-label="Top Notch channel">
+          <span class="ch-icon">👌</span>Top Notch
+        </button>
+        <button class="radio-channel-btn" data-idx="6" aria-label="Trendy channel">
+          <span class="ch-icon">⭐</span>Trendy
+        </button>
+        <button class="radio-channel-btn" data-idx="7" aria-label="Dance channel">
+          <span class="ch-icon">💃</span>Dance
+        </button>
+        <button class="radio-channel-btn" data-idx="8" aria-label="Love channel">
+          <span class="ch-icon">♥️</span>Love
+        </button>
+        <button class="radio-channel-btn" data-idx="9" aria-label="Military Comms channel">
+          <span class="ch-icon">🧱</span>Military Comms
+        </button>
+        <button class="radio-channel-btn" data-idx="10" aria-label="News channel">
+          <span class="ch-icon">🟨</span>News
+        </button>
+        <button class="radio-channel-btn" data-idx="11" aria-label="Conversation channel">
+          <span class="ch-icon">🟦</span>Conversation
+        </button>
+        <button class="radio-channel-btn" data-idx="12" aria-label="Shortwave channel">
+          <span class="ch-icon">🟥</span>Shortwave
+        </button>
+        <button class="radio-channel-btn" data-idx="13" aria-label="FM channel">
+          <span class="ch-icon">🟪</span>FM
+        </button>
+        <button class="radio-channel-btn" data-idx="14" aria-label="AM channel">
+          <span class="ch-icon">🟩</span>AM
+        </button>
+        <button class="radio-channel-btn" data-idx="15" aria-label="Digital Live channel">
+          <span class="ch-icon">⬜</span>Digital Live
+        </button>
+      </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:2rem">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+        <h3 style="font-size:0.95rem;margin-bottom:0.6rem">⚙️ How the Crusher Works</h3>
+        <ol style="color:var(--text-secondary);font-size:0.82rem;padding-left:1.1rem;line-height:2.1">
+          <li>Fetch latest Bitcoin block hash (64 hex chars)</li>
+          <li>Sum all hex digit values (0–15 each)</li>
+          <li>Apply: <code>total % 16</code> → channel index</li>
+          <li>Same block hash → same channel, worldwide</li>
+          <li>New block every ~10 minutes = new spin</li>
+        </ol>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+        <h3 style="font-size:0.95rem;margin-bottom:0.6rem">📡 Virtual SDR Channels</h3>
+        <p style="color:var(--text-secondary);font-size:0.82rem;line-height:1.7">
+          Each channel maps to a virtual signal type: from smooth jazz streams to military-style
+          chatter simulations, alien electroacoustic soundscapes, and live Bitcoin transaction sonification.
+          No hardware required — pure software-defined radio.
+        </p>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>∞ Infinity Engine &nbsp;|&nbsp; <a href="builder.html">AI Builder</a> &nbsp;·&nbsp; <a href="pages/">Pages</a> &nbsp;·&nbsp; <a href="index.html">Dashboard</a></p>
+  </footer>
+
+  <div id="toast"></div>
+  <script src="js/infinity.js"></script>
+</body>
+</html>

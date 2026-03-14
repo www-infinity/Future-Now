@@ -732,19 +732,190 @@ footer a:hover {
   color: var(--accent-cyan);
 }
 
+/* ── Hamburger Menu ── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 28px;
+  height: 20px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  z-index: 200;
+}
+
+.nav-hamburger span {
+  display: block;
+  height: 2px;
+  background: var(--accent-cyan);
+  border-radius: 2px;
+  transition: all 0.25s ease;
+}
+
+.nav-hamburger.open span:nth-child(1) { transform: translateY(9px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-9px) rotate(-45deg); }
+
+/* ── Warning Banner ── */
+.system-warning {
+  background: rgba(255,68,85,0.08);
+  border: 1px solid rgba(255,68,85,0.3);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  color: #ff8899;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.system-warning strong { color: var(--status-blocked); }
+
+/* ── Build Log ── */
+.build-log-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #88ffcc;
+  margin-left: 1rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  opacity: 0.75;
+}
+
+/* ── Bitcoin Radio ── */
+.radio-dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.slot-machine {
+  background: var(--bg-card);
+  border: 2px solid var(--border-bright);
+  border-radius: var(--radius);
+  padding: 1.5rem 2rem;
+  text-align: center;
+  min-width: 280px;
+  position: relative;
+  overflow: hidden;
+}
+
+.slot-machine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(162,89,255,0.06), transparent);
+  pointer-events: none;
+}
+
+.slot-display {
+  font-size: 3.5rem;
+  line-height: 1;
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+.slot-display.spinning {
+  animation: slot-spin 0.12s ease-in-out infinite alternate;
+}
+
+@keyframes slot-spin {
+  from { transform: scaleY(0.8); opacity: 0.5; }
+  to   { transform: scaleY(1.1); opacity: 1; }
+}
+
+.slot-channel-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-purple);
+  min-height: 1.5em;
+  margin-bottom: 0.25rem;
+}
+
+.slot-seed {
+  font-size: 0.65rem;
+  font-family: monospace;
+  color: var(--text-muted);
+  word-break: break-all;
+  margin-top: 0.5rem;
+}
+
+.radio-channels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+}
+
+.radio-channel-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.radio-channel-btn:hover,
+.radio-channel-btn.active {
+  border-color: var(--accent-purple);
+  color: var(--text-primary);
+  background: rgba(162,89,255,0.1);
+}
+
+.radio-channel-btn .ch-icon { font-size: 1.4rem; display: block; margin-bottom: 0.2rem; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
+  .nav-hamburger { display: flex; }
+
   nav {
     padding: 0 1rem;
-    flex-direction: column;
-    height: auto;
-    padding: 0.75rem 1rem;
-    gap: 0.5rem;
+    height: 56px;
+    position: relative;
   }
 
   .nav-links {
-    gap: 0.1rem;
-    justify-content: center;
+    display: none;
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: rgba(3,3,18,0.98);
+    border-bottom: 1px solid rgba(0,229,255,0.18);
+    backdrop-filter: blur(20px);
+    flex-direction: column;
+    gap: 0;
+    padding: 0.5rem 0;
+    z-index: 150;
+  }
+
+  .nav-links.open { display: flex; }
+
+  .nav-links li { width: 100%; }
+
+  .nav-links a {
+    display: block;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-links li:last-child a { border-bottom: none; }
+
+  .page-header {
+    padding: 1.5rem 1rem 1rem;
   }
 
   .page-header h1 {
