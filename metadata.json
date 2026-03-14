@@ -1,0 +1,36 @@
+{
+  "engine": "Infinity Media & Page Hosting Engine",
+  "version": "1.0.0",
+  "description": "Central media backbone for all Infinity projects",
+  "media": [],
+  "pages": [
+    {
+      "page_id": "page_20260313_0001",
+      "type": "html",
+      "title": "Zelda Tribute",
+      "url": "/pages/zelda_tribute/",
+      "category": "AI Generated",
+      "tags": ["zelda", "fantasy", "ai-built"],
+      "uploader": "ai_engine",
+      "status": "approved",
+      "timestamp": "2026-03-13T00:00:00Z"
+    }
+  ],
+  "storage": {
+    "images": "/media/images",
+    "videos": "/media/videos",
+    "uploads": "/media/uploads",
+    "html": "/media/html",
+    "review_queue": "/media/review_queue",
+    "library": "/library",
+    "imported": "/library/imported"
+  },
+  "ai_statuses": ["approved", "review", "blocked"],
+  "supported_types": {
+    "image": ["jpg", "jpeg", "png", "gif", "webp", "svg"],
+    "video": ["mp4", "webm", "mov"],
+    "html": ["html", "htm"],
+    "zip": ["zip"],
+    "document": ["md", "txt", "pdf"]
+  }
+}

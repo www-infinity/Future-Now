@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Website Builder — Infinity Engine</title>
+  <meta name="description" content="Generate complete websites from a single prompt. AI creates folders, HTML, and links gallery assets automatically.">
+  <link rel="stylesheet" href="/css/infinity.css">
+  <style>
+    .log-line {
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      color: var(--accent-green);
+      padding: 0.2rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    #ai-output {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      max-height: 320px;
+      overflow-y: auto;
+      display: none;
+    }
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .example-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+    .example-btn:hover {
+      border-color: var(--accent-purple);
+      color: var(--text-primary);
+      background: rgba(162,89,255,0.08);
+    }
+    .example-btn .eg-icon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
+  </style>
+</head>
+<body data-page="builder">
+
+  <nav>
+    <a href="/index.html" class="nav-brand"><span class="logo-icon">∞</span> Infinity Engine</a>
+    <ul class="nav-links">
+      <li><a href="/index.html">Dashboard</a></li>
+      <li><a href="/upload.html">Upload</a></li>
+      <li><a href="/gallery/index.html">Gallery</a></li>
+      <li><a href="/library/index.html">Library</a></li>
+      <li><a href="/builder.html" class="active">AI Builder</a></li>
+      <li><a href="/pages/">Pages</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <h1>🤖 AI Website Builder</h1>
+    <p>Describe a website and the AI engine creates the folder structure, HTML, and links your gallery assets automatically.</p>
+  </div>
+
+  <main>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem">
+      <div>
+        <div class="form-group">
+          <label class="form-label" for="ai-prompt">Your Prompt</label>
+          <textarea id="ai-prompt" class="form-textarea" rows="4"
+            placeholder="e.g. Build an awesome Zelda fan site with dark fantasy theme"></textarea>
+        </div>
+
+        <button id="ai-build-btn" class="btn btn-purple" style="width:100%;padding:0.85rem;font-size:1rem">
+          🚀 Build Site
+        </button>
+
+        <div style="margin-top:1.25rem">
+          <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem">EXAMPLE PROMPTS</p>
+          <div class="examples-grid">
+            <div class="example-btn" onclick="setPrompt('Build an awesome Zelda fan site')">
+              <span class="eg-icon">🗡️</span>Zelda fan site
+            </div>
+            <div class="example-btn" onclick="setPrompt('Create a Mario World tribute page')">
+              <span class="eg-icon">🍄</span>Mario tribute
+            </div>
+            <div class="example-btn" onclick="setPrompt('Build a Bitcoin crypto hub')">
+              <span class="eg-icon">₿</span>Bitcoin hub
+            </div>
+            <div class="example-btn" onclick="setPrompt('Create a fantasy gem gallery')">
+              <span class="eg-icon">💎</span>Gem gallery
+            </div>
+            <div class="example-btn" onclick="setPrompt('Build a retro gaming showcase')">
+              <span class="eg-icon">🕹️</span>Retro games
+            </div>
+            <div class="example-btn" onclick="setPrompt('Create an AI art portfolio')">
+              <span class="eg-icon">🎨</span>AI art portfolio
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem">
+          <h3 style="font-size:1rem;margin-bottom:0.75rem">⚙️ How It Works</h3>
+          <ol style="color:var(--text-secondary);font-size:0.875rem;padding-left:1.25rem;line-height:2">
+            <li>AI reads your prompt</li>
+            <li>Creates <code>/pages/your_site/</code> folder</li>
+            <li>Generates HTML structure</li>
+            <li>Inserts images from <code>/library</code></li>
+            <li>Links gallery assets</li>
+            <li>Publishes via GitHub Pages</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem">
+          <h3 style="font-size:1rem;margin-bottom:0.75rem">🌐 Published Pages</h3>
+          <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:0.75rem">
+            Finished pages are served at:
+          </p>
+          <code style="color:var(--accent-cyan);font-size:0.8rem;word-break:break-all">
+            https://www-infinity.github.io/Future-Now/pages/your_site/
+          </code>
+          <p style="margin-top:0.75rem">
+            <a href="/pages/" class="btn btn-secondary btn-sm">Browse Hosted Pages →</a>
+          </p>
+        </div>
+
+        <!-- Build Log -->
+        <div style="margin-top:1.25rem">
+          <div id="ai-output"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>∞ Infinity Engine &nbsp;|&nbsp; <a href="/pages/">Hosted Pages</a> &nbsp;·&nbsp; <a href="/library/index.html">Library</a> &nbsp;·&nbsp; <a href="/gallery/index.html">Gallery</a></p>
+  </footer>
+
+  <div id="toast"></div>
+  <script src="/js/infinity.js"></script>
+  <script>
+    function setPrompt(text) {
+      document.getElementById('ai-prompt').value = text;
+      document.getElementById('ai-prompt').focus();
+    }
+  </script>
+</body>
+</html>

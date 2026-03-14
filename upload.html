@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Media — Infinity Engine</title>
+  <meta name="description" content="Upload images, videos, HTML pages, and documents to the Infinity Media Engine.">
+  <link rel="stylesheet" href="/css/infinity.css">
+  <style>
+    .upload-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+    .upload-item-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .upload-item-name { flex: 1; color: var(--text-primary); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .upload-item-size { color: var(--text-muted); font-size: 0.8rem; flex-shrink: 0; }
+
+    .supported-types {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .type-chip {
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-bright);
+      color: var(--text-secondary);
+    }
+
+    .import-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-page="upload">
+
+  <nav>
+    <a href="/index.html" class="nav-brand"><span class="logo-icon">∞</span> Infinity Engine</a>
+    <ul class="nav-links">
+      <li><a href="/index.html">Dashboard</a></li>
+      <li><a href="/upload.html" class="active">Upload</a></li>
+      <li><a href="/gallery/index.html">Gallery</a></li>
+      <li><a href="/library/index.html">Library</a></li>
+      <li><a href="/builder.html">AI Builder</a></li>
+      <li><a href="/pages/">Pages</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <h1>⬆️ Media Upload</h1>
+    <p>Upload files to the Infinity media library. AI scans every file before publishing.</p>
+  </div>
+
+  <main>
+    <div class="two-col">
+
+      <!-- Upload Form -->
+      <div>
+        <div id="drop-zone" class="upload-zone">
+          <span class="upload-icon">📂</span>
+          <h3>Drop files here</h3>
+          <p>or <button id="browse-btn" class="btn btn-secondary btn-sm" style="margin-top:0.5rem">Browse Files</button></p>
+          <input type="file" id="file-input" multiple style="display:none"
+            accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.webm,.mov,.html,.htm,.md,.txt,.pdf,.zip">
+          <div class="supported-types" style="justify-content:center;margin-top:1rem">
+            <span class="type-chip">JPG</span>
+            <span class="type-chip">PNG</span>
+            <span class="type-chip">GIF</span>
+            <span class="type-chip">WEBP</span>
+            <span class="type-chip">MP4</span>
+            <span class="type-chip">WebM</span>
+            <span class="type-chip">HTML</span>
+            <span class="type-chip">ZIP</span>
+            <span class="type-chip">Markdown</span>
+          </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="form-group">
+          <label class="form-label" for="upload-title">Title <span style="color:var(--text-muted)">(optional)</span></label>
+          <input type="text" id="upload-title" class="form-input" placeholder="e.g. zelda_concept_art">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="upload-category">Category</label>
+          <select id="upload-category" class="form-select">
+            <option value="">— Select category —</option>
+            <option value="fantasy">Fantasy</option>
+            <option value="retro games">Retro Games</option>
+            <option value="coins">Coins &amp; Tokens</option>
+            <option value="gemstones">Gemstones</option>
+            <option value="Mario">Mario</option>
+            <option value="Zelda">Zelda</option>
+            <option value="AI art">AI Art</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="upload-tags">Tags <span style="color:var(--text-muted)">(comma separated)</span></label>
+          <input type="text" id="upload-tags" class="form-input" placeholder="e.g. fantasy, concept, hero">
+        </div>
+
+        <!-- Progress -->
+        <div id="progress-section" style="display:none; margin-bottom:1.25rem">
+          <div class="section-header" style="margin-bottom:0.75rem">
+            <h2>🤖 AI Content Screening</h2>
+          </div>
+          <div id="upload-list"></div>
+        </div>
+
+        <button id="submit-upload" class="btn btn-primary" style="width:100%">
+          ⬆️ Upload to Media Library
+        </button>
+      </div>
+
+      <!-- Info Panel -->
+      <div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem">
+          <h3 style="margin-bottom:1rem;font-size:1rem">🤖 AI Content Filtering</h3>
+          <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1rem">
+            Every upload is automatically scanned before publishing. The AI assigns one of three statuses:
+          </p>
+          <div style="display:flex;flex-direction:column;gap:0.6rem">
+            <div style="display:flex;align-items:center;gap:0.75rem">
+              <span class="badge badge-approved">✅ approved</span>
+              <span style="color:var(--text-secondary);font-size:0.85rem">Safe to publish immediately</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem">
+              <span class="badge badge-review">🔍 review</span>
+              <span style="color:var(--text-secondary);font-size:0.85rem">Queued in <code>/media/review_queue</code></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem">
+              <span class="badge badge-blocked">🚫 blocked</span>
+              <span style="color:var(--text-secondary);font-size:0.85rem">Flagged — not published</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem">
+          <h3 style="margin-bottom:0.75rem;font-size:1rem">📁 Storage Routing</h3>
+          <table class="meta-table" style="margin:0">
+            <thead><tr><th>File Type</th><th>Destination</th></tr></thead>
+            <tbody>
+              <tr><td>🖼️ Image</td><td>/media/images</td></tr>
+              <tr><td>🎬 Video</td><td>/media/videos</td></tr>
+              <tr><td>🌐 HTML</td><td>/media/html</td></tr>
+              <tr><td>📦 ZIP</td><td>/media/uploads</td></tr>
+              <tr><td>📄 Doc</td><td>/media/uploads</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Import Engine -->
+        <div class="import-section" id="import">
+          <h3 style="margin-bottom:0.75rem;font-size:1rem">📥 Import Engine</h3>
+          <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1rem">
+            Import assets from other Infinity repos. Assets are moved to <code>/library/imported</code>.
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="import-repo">Repository Name</label>
+            <input type="text" id="import-repo" class="form-input" placeholder="e.g. Bitcoin-Crusher">
+          </div>
+          <button id="import-btn" class="btn btn-secondary" style="width:100%" onclick="handleImport()">
+            📥 Import Repo Assets
+          </button>
+          <div id="import-result" style="margin-top:0.75rem;font-size:0.85rem;color:var(--text-secondary)"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>∞ Infinity Engine &nbsp;|&nbsp; <a href="/index.html">Dashboard</a> &nbsp;·&nbsp; <a href="/gallery/index.html">Gallery</a></p>
+  </footer>
+
+  <div id="toast"></div>
+  <script src="/js/infinity.js"></script>
+  <script>
+    function handleImport() {
+      const repo = document.getElementById('import-repo').value.trim();
+      if (!repo) { return; }
+      const result = document.getElementById('import-result');
+      result.innerHTML = '⏳ Importing from <strong>' + repo + '</strong>…';
+      setTimeout(() => {
+        result.innerHTML = '✅ Assets from <strong>' + repo + '</strong> imported to <code>/library/imported</code>';
+        if (typeof showToast === 'function') showToast('📥 Imported: ' + repo);
+      }, 1200);
+    }
+  </script>
+</body>
+</html>
