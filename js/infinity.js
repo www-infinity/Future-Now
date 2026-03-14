@@ -749,6 +749,156 @@ async function commitPageViaAPI(slugName, html, token) {
   return res;
 }
 
+/* ── LLM-powered HTML generation ── */
+
+/**
+ * Read an SSE stream from OpenAI or Gemini, accumulate text, and stream
+ * completed lines to the build log via logLine().
+ * @param {Response}  response    Fetch Response with body stream
+ * @param {Function}  extractText (parsedJSON) => string delta
+ * @param {Function}  logLine     (text, type) appends a log entry
+ * @returns {Promise<string>} full accumulated text
+ */
+async function readSSEStream(response, extractText, logLine) {
+  const reader  = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = '';
+  let lineBuf  = '';
+
+  const flushLines = (final = false) => {
+    const parts = lineBuf.split('\n');
+    const toLog = final ? parts : parts.slice(0, -1);
+    toLog.forEach(l => logLine(l, 'code'));
+    lineBuf = final ? '' : (parts[parts.length - 1] || '');
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const text = decoder.decode(value, { stream: true });
+    for (const raw of text.split('\n')) {
+      const line = raw.trim();
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (payload === '[DONE]') continue;
+      try {
+        const delta = extractText(JSON.parse(payload));
+        if (delta) { fullText += delta; lineBuf += delta; flushLines(false); }
+      } catch (parseErr) {
+        // Skip malformed SSE chunks — common at stream boundaries; log at debug level only
+        /* console.debug('[infinity] SSE parse skip:', parseErr.message); */
+      }
+    }
+  }
+  flushLines(true);
+  return fullText;
+}
+
+/**
+ * Ensure the generated HTML string has the admin meta tag injected.
+ * If the LLM forgot to include it, we insert it after <head>.
+ */
+function ensureAdminMeta(html, adminId) {
+  const safeAdmin = (adminId || 'unknown').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const metaTag   = `<meta name="infinity:admin" content="${safeAdmin}">`;
+  if (html.includes('infinity:admin')) return html;
+  return html.replace(/<head[^>]*>/i, m => m + '\n  ' + metaTag);
+}
+
+/**
+ * Strip markdown code fences that some LLMs wrap around HTML output.
+ */
+function stripMarkdownFences(text) {
+  return text
+    .replace(/^```(?:html)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+}
+
+/**
+ * Call OpenAI or Google Gemini to generate a complete HTML page for the prompt.
+ * Key prefix detection: "sk-" / "sess-" → OpenAI; "AIza" → Gemini.
+ * Streams each HTML line to the build log as it arrives.
+ * Falls back to null on any API error (caller uses template generator instead).
+ * @returns {Promise<string|null>}
+ */
+async function callLLMForHTML(userPrompt, adminId, apiKey, logLine) {
+  const safeAdmin   = (adminId || 'unknown').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const systemPrompt = `You are an expert web developer building pages for the Infinity Engine platform.
+Generate a complete, self-contained HTML page for the user's request.
+
+STRICT RULES — follow exactly:
+1. Output ONLY the raw HTML document (<!DOCTYPE html> … </html>). No markdown, no explanations, no code fences.
+2. ALL CSS inline inside a <style> block in <head>. No external stylesheets or CDN links.
+3. Choose dark accent colours that match the topic (e.g. gold for Zelda, orange for Bitcoin).
+4. MUST include in <head>: <meta name="infinity:admin" content="${safeAdmin}">
+5. MUST include in <head>: <meta name="generator" content="Infinity AI Website Builder">
+6. Navigation bar: brand link "∞ Infinity Pages" pointing to ../../index.html, and a "← All Pages" link to ../../pages/.
+7. Yellow warning bar below nav: ⚠️ Infinity System Notice — admin of this page is permanently recorded.
+8. Hero section: large emoji icon, H1 title, and a descriptive paragraph relevant to the topic.
+9. Multiple rich content sections with REAL, detailed information about the specific topic — no generic filler.
+10. An "Admin & Ownership" section that displays the device ID: ${safeAdmin}
+11. Footer: "∞ [page title] | Built by Infinity AI Website Builder · All Pages"
+12. Fully responsive layout (works on mobile, min-width 320px).
+13. Zero external resources (no Google Fonts, no CDN images, no remote scripts).`;
+
+  const isGemini = apiKey.startsWith('AIza');
+
+  let response;
+  if (isGemini) {
+    // Gemini requires the API key as a URL query parameter (this is the official API design).
+    // The key is therefore visible in browser network logs; users should treat it as a
+    // low-privilege, rate-limited AI key and not a secret credential.
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${encodeURIComponent(apiKey)}&alt=sse`;
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nUser request: ${userPrompt}` }] }],
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.7 }
+      })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Gemini API error ${response.status}`);
+    }
+    const html = await readSSEStream(
+      response,
+      parsed => parsed.candidates?.[0]?.content?.parts?.[0]?.text || '',
+      logLine
+    );
+    return ensureAdminMeta(stripMarkdownFences(html), adminId);
+  } else {
+    // OpenAI-compatible API (sk-..., sess-..., or custom)
+    response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: `Build this website: ${userPrompt}` }
+        ],
+        stream: true,
+        max_tokens: 4096
+      })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `OpenAI API error ${response.status}`);
+    }
+    const html = await readSSEStream(
+      response,
+      parsed => parsed.choices?.[0]?.delta?.content || '',
+      logLine
+    );
+    return ensureAdminMeta(stripMarkdownFences(html), adminId);
+  }
+}
+
 function initAIBuilder() {
   const promptInput = $('#ai-prompt');
   const buildBtn = $('#ai-build-btn');
@@ -802,7 +952,7 @@ function initAIBuilder() {
   }
 
   buildBtn.addEventListener('click', async () => {
-    const prompt = (promptInput.value || '').trim().toLowerCase();
+    const prompt = (promptInput.value || '').trim();
     if (!prompt) { showToast('Enter a prompt first', 'var(--accent-orange)'); return; }
 
     buildBtn.disabled = true;
@@ -810,47 +960,62 @@ function initAIBuilder() {
     output.style.display = 'block';
     output.innerHTML = '';
 
-    const tmplKey = Object.keys(TEMPLATES).find(k => k !== 'default' && prompt.includes(k)) || 'default';
+    const promptLower = prompt.toLowerCase();
+    const tmplKey = Object.keys(TEMPLATES).find(k => k !== 'default' && promptLower.includes(k)) || 'default';
     const tmpl = TEMPLATES[tmplKey];
-    const slugName = prompt.replace(/[^a-z0-9]+/g, '_').slice(0, 30);
+    const slugName = promptLower.replace(/[^a-z0-9]+/g, '_').slice(0, 30).replace(/^_|_$/g, '');
     const pagePath = `pages/${slugName}/`;
+
+    // Read AI API key (OpenAI sk-... or Gemini AIza...)
+    const aiKeyInput = document.getElementById('ai-api-key');
+    const aiKey = aiKeyInput ? aiKeyInput.value.trim() : '';
 
     logLine('🤖 Infinity AI Engine initialising…');
     await new Promise(r => setTimeout(r, 180));
 
     logLine(`📁 Creating folder: ${pagePath}`);
-    await new Promise(r => setTimeout(r, 220));
-
-    logLine(`🎨 Applying theme: ${tmpl.theme} (accent ${tmpl.accent})`);
-    await new Promise(r => setTimeout(r, 200));
-
-    logLine('📝 Writing <!DOCTYPE html> …');
-    await new Promise(r => setTimeout(r, 160));
-
-    logLine('🖼️  Linking gallery assets from /library and /media/images…');
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 180));
 
     logLine(`🔐 Embedding admin device ID: ${adminId}`);
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 160));
 
-    logLine('✨ Applying Infinity Flux Capacitor visuals…');
-    await new Promise(r => setTimeout(r, 200));
+    let html;
 
-    logLine('⚙️ Writing CSS — layout, cards, hero, responsive…');
-    await new Promise(r => setTimeout(r, 200));
+    if (aiKey) {
+      // ── LLM path: call OpenAI or Gemini ──
+      const provider = aiKey.startsWith('AIza') ? 'Gemini 1.5 Flash' : 'GPT-4o-mini';
+      logLine(`🧠 Sending prompt to ${provider} — streaming live HTML…`);
+      logLine('─────────────────────────────────────');
+      try {
+        html = await callLLMForHTML(prompt, adminId, aiKey, logLine);
+        if (!html || html.length < 200) throw new Error('LLM returned empty or too-short response');
+      } catch (llmErr) {
+        logLine(`⚠️ LLM error: ${llmErr.message} — falling back to template generator`, 'warn');
+        html = null;
+      }
+    }
 
-    logLine('📡 Injecting GitHub Pages live URL…');
-    await new Promise(r => setTimeout(r, 200));
+    if (!html) {
+      // ── Template fallback path ──
+      if (!aiKey) {
+        logLine('ℹ️  No AI key — using built-in template generator. Add an OpenAI or Gemini key for real AI pages.', 'warn');
+      }
+      logLine(`🎨 Applying theme: ${tmpl.theme} (accent ${tmpl.accent})`);
+      await new Promise(r => setTimeout(r, 160));
+      logLine('📝 Writing <!DOCTYPE html> …');
+      await new Promise(r => setTimeout(r, 120));
+      logLine('⚙️ Writing CSS — layout, cards, hero, responsive…');
+      await new Promise(r => setTimeout(r, 160));
+      logLine('📡 Injecting GitHub Pages live URL…');
+      await new Promise(r => setTimeout(r, 160));
 
-    // Generate the actual HTML content
-    const html = generateSiteHTML(prompt, tmpl, slugName, adminId);
+      html = generateSiteHTML(promptLower, tmpl, slugName, adminId);
 
-    logLine('─────────────────────────────────────');
-    logLine('📄 Generated HTML source (showing all lines written):');
-    await new Promise(r => setTimeout(r, 100));
-
-    // Stream actual code to log
-    await streamCodeToLog(html);
+      logLine('─────────────────────────────────────');
+      logLine('📄 Generated HTML source:');
+      await new Promise(r => setTimeout(r, 80));
+      await streamCodeToLog(html);
+    }
 
     logLine('─────────────────────────────────────');
     logLine(`✅ index.html complete — ${html.length.toLocaleString()} bytes, ${html.split('\n').length} lines`);
@@ -858,7 +1023,7 @@ function initAIBuilder() {
     const blob = new Blob([html], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
 
-    // Metadata entry
+    // Save metadata for pages listing + admin ownership
     addEntry({
       file_id: generateFileId('page'),
       type: 'html',
@@ -869,6 +1034,7 @@ function initAIBuilder() {
       uploader: 'ai_engine',
       admin_id: adminId,
       folder: pagePath,
+      slug: slugName,
       status: 'approved',
       timestamp: new Date().toISOString(),
       url: pagePath
@@ -877,7 +1043,7 @@ function initAIBuilder() {
     buildBtn.disabled = false;
     buildBtn.textContent = '🚀 Build & Commit';
 
-    // "Preview Page" — opens generated HTML in new tab (no 404!)
+    // "Preview Page" — opens generated HTML in new tab instantly
     const viewLink = document.createElement('a');
     viewLink.href = blobUrl;
     viewLink.target = '_blank';
@@ -918,12 +1084,13 @@ function initAIBuilder() {
         } else {
           const err = await res.json().catch(() => ({}));
           statusLine.textContent = `⚠️ GitHub commit failed: ${err.message || res.status}. Check your token.`;
+          statusLine.className += ' log-warn';
         }
       } catch (e) {
         logLine(`⚠️ Could not reach GitHub API: ${e.message}`, 'warn');
       }
     } else {
-      logLine('ℹ️  No token provided — page not committed. Enter a GHP token above to auto-commit.', 'warn');
+      logLine('ℹ️  No GHP token — page not committed. Enter a GitHub token above to auto-commit live.', 'warn');
     }
 
     showToast('🚀 Site built: ' + pagePath);

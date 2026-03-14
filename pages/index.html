@@ -6,12 +6,49 @@
   <title>Hosted Pages — Infinity Engine</title>
   <meta name="description" content="All web pages hosted by the Infinity Media Engine via GitHub Pages.">
   <link rel="stylesheet" href="../css/infinity.css">
+  <style>
+    .page-card {
+      background: linear-gradient(145deg, var(--bg-card) 0%, rgba(10,10,36,0.9) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+    .page-card:hover {
+      border-color: rgba(0,229,255,0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(0,229,255,0.12);
+    }
+    .page-card .page-icon { font-size: 2rem; margin-bottom: 0.6rem; display: block; }
+    .page-card h3 { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.3rem; }
+    .page-card .page-path { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; margin-bottom: 0.75rem; }
+    .page-card .card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+    .owner-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.15rem 0.5rem; border-radius: 999px;
+      font-size: 0.68rem; font-weight: 600;
+      background: rgba(0,255,136,0.12); color: var(--status-approved);
+      border: 1px solid rgba(0,255,136,0.3);
+      margin-bottom: 0.4rem;
+    }
+    .pages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+  </style>
 </head>
-<body>
+<body data-page="pages">
 
   <nav>
     <a href="../index.html" class="nav-brand"><span class="logo-icon">∞</span> Infinity Engine</a>
-    <ul class="nav-links">
+    <button class="nav-hamburger" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="nav-links">
       <li><a href="../index.html">Dashboard</a></li>
       <li><a href="../upload.html">Upload</a></li>
       <li><a href="../gallery/index.html">Gallery</a></li>
@@ -33,27 +70,17 @@
       <a href="../upload.html" class="btn btn-secondary">⬆️ Upload HTML</a>
     </div>
 
-    <div class="feature-grid">
-
-      <a href="../pages/zelda_tribute/" class="feature-card">
-        <span class="feature-icon">🗡️</span>
-        <h3>Zelda Tribute</h3>
-        <p>AI-generated Zelda fan site. Dark fantasy theme with hero banner and asset showcase.</p>
-        <div style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted)">/pages/zelda_tribute/</div>
-      </a>
-
-      <a href="../builder.html" class="feature-card" style="border-style:dashed">
-        <span class="feature-icon">➕</span>
-        <h3>Add Your Page</h3>
-        <p>Use the AI Builder to generate a new site, or upload an HTML folder directly.</p>
-        <div style="margin-top:0.75rem">
-          <span class="btn btn-primary btn-sm">Build with AI</span>
-        </div>
-      </a>
-
+    <!-- Dynamic pages grid populated by JS below -->
+    <div class="pages-grid" id="pages-grid">
+      <!-- Skeleton shown while JS loads -->
+      <div class="page-card" style="opacity:0.4;pointer-events:none">
+        <span class="page-icon">⏳</span>
+        <h3>Loading…</h3>
+        <div class="page-path">reading local metadata</div>
+      </div>
     </div>
 
-    <div style="margin-top:2rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem">
+    <div style="margin-top:1.5rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem">
       <h3 style="font-size:1rem;margin-bottom:0.75rem">📁 Page Structure</h3>
       <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:0.75rem">
         Each hosted page lives in its own folder:
@@ -75,5 +102,100 @@
 
   <div id="toast"></div>
   <script src="../js/infinity.js"></script>
+  <script>
+  (function renderPages() {
+    const grid = document.getElementById('pages-grid');
+    if (!grid) return;
+
+    const adminId = localStorage.getItem('infinity_admin_id') || '';
+    let metadata = [];
+    try { metadata = JSON.parse(localStorage.getItem('infinity_media_metadata') || '[]'); } catch (e) {
+      console.warn('[infinity] Could not parse page metadata:', e.message);
+    }
+
+    // Filter to AI-built pages only
+    const builtPages = metadata.filter(m => m.type === 'html' && m.folder && m.folder.startsWith('pages/'));
+
+    // Always include the bundled zelda_tribute example
+    const knownPages = [
+      { slug: 'zelda_tribute', title: 'Zelda Tribute', icon: '🗡️', desc: 'AI-generated Zelda fan site. Dark fantasy theme with hero banner and asset showcase.' }
+    ];
+
+    // Build unique slug set from localStorage entries
+    const lsSlugSet = new Set(builtPages.map(p => p.slug || (p.folder || '').replace('pages/', '').replace(/\//g, '')));
+
+    // Combine: ls entries first, then known pages not already in ls
+    const cards = [
+      ...builtPages.map(p => ({
+        slug: p.slug || (p.folder || '').replace('pages/', '').replace(/\//g, ''),
+        title: p.title || p.slug || 'Untitled',
+        icon: '🌐',
+        desc: '',
+        adminId: p.admin_id || '',
+        ts: p.timestamp || ''
+      })),
+      ...knownPages.filter(k => !lsSlugSet.has(k.slug)).map(k => ({ ...k, adminId: '', ts: '' }))
+    ];
+
+    if (cards.length === 0) {
+      grid.innerHTML = `
+        <div class="page-card" style="border-style:dashed;grid-column:1/-1;text-align:center;padding:2.5rem">
+          <span class="page-icon">📭</span>
+          <h3>No pages built yet</h3>
+          <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">
+            Use the AI Builder to generate your first page — it commits directly to GitHub Pages.
+          </p>
+          <a href="../builder.html" class="btn btn-purple">🤖 Build a Page</a>
+        </div>`;
+      return;
+    }
+
+    const liveBase = 'https://www-infinity.github.io/Future-Now/pages/';
+
+    grid.innerHTML = cards.map(c => {
+      const isOwner = adminId && c.adminId && adminId === c.adminId;
+      const liveUrl = liveBase + c.slug + '/';
+      const localPath = c.slug + '/index.html'; // relative path within /pages/
+      const editUrl = '../builder.html?prompt=' + encodeURIComponent(c.title);
+      const ownerBadge = isOwner ? '<span class="owner-badge">🔐 You own this page</span>' : '';
+      const timeStr = c.ts ? ('<div style="font-size:0.68rem;color:var(--text-muted);margin-top:0.35rem">Built ' + new Date(c.ts).toLocaleDateString() + '</div>') : '';
+      const descHtml = c.desc ? `<p style="color:var(--text-secondary);font-size:0.82rem;line-height:1.5;margin-bottom:0.5rem">${c.desc}</p>` : '';
+      return `
+        <div class="page-card">
+          <span class="page-icon">${c.icon || '🌐'}</span>
+          ${ownerBadge}
+          <h3>${escHtml(c.title)}</h3>
+          <div class="page-path">/pages/${c.slug}/</div>
+          ${descHtml}${timeStr}
+          <div class="card-actions">
+            <a href="${escHtml(localPath)}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">🌐 Open Page</a>
+            <a href="${escHtml(liveUrl)}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">🚀 Live Site</a>
+            ${isOwner ? `<a href="${escHtml(editUrl)}" class="btn btn-purple btn-sm">✏️ Edit</a>` : ''}
+          </div>
+        </div>`;
+    }).join('') + `
+      <div class="page-card" style="border-style:dashed;text-align:center;padding:1.75rem">
+        <span class="page-icon">➕</span>
+        <h3>Add Your Page</h3>
+        <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:1rem">
+          Use the AI Builder to generate a new site, or upload an HTML folder directly.
+        </p>
+        <a href="../builder.html" class="btn btn-primary btn-sm">Build with AI</a>
+      </div>`;
+  })();
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Handle ?prompt= parameter from Edit buttons to pre-fill builder
+  (function handleEditParam() {
+    const params = new URLSearchParams(window.location.search);
+    const prompt = params.get('prompt');
+    if (prompt) {
+      sessionStorage.setItem('infinity_builder_prompt', prompt);
+    }
+  })();
+  </script>
 </body>
 </html>
